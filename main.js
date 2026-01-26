@@ -2,13 +2,15 @@ const { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, di
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
-const Tesseract = require('tesseract.js');
+const { createWorker } = require('tesseract.js');
 
 let win;
 let osdWin;
 let scannerWin;
 let autoScanInterval = null;
 let pendingScanType = 'normal';
+let isScanning = false;
+let worker = null;
 
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
 let settings;
@@ -372,9 +374,8 @@ function stopAutoScanner() {
   autoScanInterval = null;
 }
 
-async function scanScreen() {
-  const currentArea = settings.voidCascadeMode ? settings.voidCascadeScanArea : settings.scanArea;
-  if (!currentArea || !win) return;
+async function getScreenCapture(area) {
+  if (!area) return null;
   try {
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width, height } = primaryDisplay.size;
@@ -384,13 +385,59 @@ async function scanScreen() {
       thumbnailSize: { width: width * scaleFactor, height: height * scaleFactor }
     });
     const primaryScreenSource = sources.find(source => source.display_id === primaryDisplay.id.toString());
-    if (!primaryScreenSource) return;
-    const image = primaryScreenSource.thumbnail.crop(currentArea);
-    const { data: { text } } = await Tesseract.recognize(image.toPNG(), 'eng');
-    const targetText = settings.voidCascadeMode ? "SELECT RELIC" : "MISSION COMPLETE";
-    if (text && text.toUpperCase().includes(targetText)) {      
+    if (!primaryScreenSource) return null;
+    
+    const scaledArea = {
+      x: Math.round(area.x * scaleFactor),
+      y: Math.round(area.y * scaleFactor),
+      width: Math.round(area.width * scaleFactor),
+      height: Math.round(area.height * scaleFactor)
+    };
+    return primaryScreenSource.thumbnail.crop(scaledArea);
+  } catch (e) {
+    console.error("Capture error:", e);
+    return null;
+  }
+}
+
+async function scanScreen() {
+  if (isScanning) return;
+  isScanning = true;
+  const currentArea = settings.voidCascadeMode ? settings.voidCascadeScanArea : settings.scanArea;
+  if (!currentArea || !win) {
+    isScanning = false;
+    return;
+  }
+  try {
+    let image = await getScreenCapture(currentArea);
+    if (!image) return;
+    
+    // Upscale image to improve OCR accuracy
+    const size = image.getSize();
+    image = image.resize({ width: size.width * 2, height: size.height * 2 });
+
+    if (!worker) {
+      worker = await createWorker('eng');
+      await worker.setParameters({
+        tessedit_pageseg_mode: '7', // Treat image as a single text line
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ', // Only recognize uppercase letters and spaces
+      });
+    }
+
+    const { data: { text } } = await worker.recognize(image.toPNG());
+    const upperText = text.toUpperCase();
+    console.log(`[Scanner] ${upperText.replace(/\s+/g, ' ')}`);
+
+    let detected = false;
+    if (settings.voidCascadeMode) {
+      if (/SELECT\s+(A\s+)?REL?[IN][CE]/.test(upperText)) detected = true;
+    } else if (upperText.includes("MISSION COMPLETE")) {
+      detected = true;
+    }
+
+    if (detected) {      
       stopAutoScanner();
-      console.log(`${targetText} detected. Pausing scanner for ${settings.autoScanPause} seconds.`);
+      console.log(`Target detected. Pausing scanner for ${settings.autoScanPause} seconds.`);
       win.webContents.send('mission-complete-detected');      
       setTimeout(() => {
         if (settings.autoScanEnabled) startAutoScanner();
@@ -398,8 +445,36 @@ async function scanScreen() {
     }
   } catch (error) {
     console.error('Auto-scan error:', error);
+  } finally {
+    isScanning = false;
   }
 }
+
+ipcMain.handle('test-scanner', async () => {
+  const currentArea = settings.voidCascadeMode ? settings.voidCascadeScanArea : settings.scanArea;
+  console.log('[Test Scanner] Area:', currentArea);
+  let image = await getScreenCapture(currentArea);
+  if (!image) return { error: "Could not capture screen. Check scan area." };
+
+  // Upscale image to improve OCR accuracy
+  const size = image.getSize();
+  image = image.resize({ width: size.width * 2, height: size.height * 2 });
+
+  if (!worker) {
+    worker = await createWorker('eng');
+    await worker.setParameters({
+      tessedit_pageseg_mode: '7',
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ',
+    });
+  }
+
+  const { data: { text } } = await worker.recognize(image.toPNG());
+  console.log('[Test Scanner] Detected:', text.trim());
+  return { 
+    text: text.trim(), 
+    image: image.toDataURL() 
+  };
+});
 
 function startAutoScanner() {
   stopAutoScanner();

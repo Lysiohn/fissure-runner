@@ -43,14 +43,13 @@
     }
 
     .layout-column {
-      flex: 1 1 320px;
+      flex: 1;
       display: flex;
       flex-direction: column;
       gap: 1rem;
       padding: 1rem;
       overflow-y: auto;
       min-width: 320px;
-      transition: flex 0.3s;
     }
 
     .layout-column.editing {
@@ -59,44 +58,10 @@
       min-height: 100px;
     }
 
-    /* ... existing styles ... */
-
-    .splitter-col {
-      width: 12px;
-      cursor: col-resize;
-      background: transparent;
-      flex: none;
-      z-index: 50;
-      margin: 0 -6px; /* Centers the splitter between columns */
-      position: relative;
-    }
-    .splitter-col:hover, .splitter-col.active {
-      background: rgba(99, 102, 241, 0.5);
-    }
-
     .draggable-panel {
       position: relative;
       transition: transform 0.2s, box-shadow 0.2s;
       overflow: hidden;
-      padding-bottom: 8px; /* Reserves space for the bottom resizer */
-    }
-
-    .resizer-panel {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 8px;
-      cursor: row-resize;
-      z-index: 10;
-    }
-    .resizer-panel:hover, .resizer-panel.active {
-      background: rgba(99, 102, 241, 0.2);
-    }
-
-    /* IMPORTANT: This prevents the Discord view from stealing your mouse while resizing */
-    body.resizing iframe, body.resizing webview {
-      pointer-events: none;
     }
 
 
@@ -669,23 +634,6 @@
 
 <body>
   <div class="app-container" id="layoutContainer">
-    <!-- Column 1 -->
-    <div id="col-1" class="layout-column">
-    <!-- DISCORD COLUMN -->
-    <div id="panel-discord" class="draggable-panel" style="display: none;">
-     <div id="discordCol" class="discord-col">
-      <div class="discord-header">
-        <span>VRC Discord Channel</span>
-        <button id="closeDiscordBtn" class="refresh-btn" style="width: auto; padding: 0.25rem 0.6rem;">Hide</button>
-      </div>
-      <webview id="discordWebview" partition="persist:discord" src="https://discord.com/channels/780376195182493707/889872820300038174" style="flex:1; width:100%; height:100%;" useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" preload="discord_preload.js"></webview>
-     </div>
-     <div class="resizer-panel"></div>
-    </div>
-    </div>
-
-    <div class="splitter-col" id="split-1"></div>
-
     <!-- Column 2 -->
     <div id="col-2" class="layout-column">
       <div id="panel-runner" class="draggable-panel">
@@ -726,7 +674,6 @@
           <button id="resetBtn">Reset</button>
         </div>
       </div>
-      <div class="resizer-panel"></div>
       </div>
 
       <div id="panel-hotkey" class="draggable-panel">
@@ -748,7 +695,6 @@
           <div id="recordStatus" class="record-status">Press any key…</div>
         </div>
       </div>
-      <div class="resizer-panel"></div>
       </div>
 
       <div id="panel-scanner" class="draggable-panel">
@@ -769,9 +715,14 @@
           <button id="setScanAreaBtn">Set Normal Scan Area</button>
           <button id="setVoidCascadeAreaBtn" class="record-btn" style="margin-top: 0.5rem;">Set Void Cascade Area</button>
           <div id="scanAreaDisplay">No area set.</div>
+          <button id="testScannerBtn" class="record-btn" style="margin-top: 0.5rem; border-color: #eab308; color: #eab308;">Test Scanner (Preview)</button>
+          <div id="scannerPreview" style="margin-top: 0.5rem; display: none; flex-direction: column; gap: 0.5rem;">
+            <div style="font-size: 0.8rem; color: #a1a1aa;">Seen Text:</div>
+            <div id="scannerSeenText" style="font-family: monospace; background: #000; padding: 0.5rem; border-radius: 4px; color: #fff; font-size: 0.8rem; word-break: break-all;"></div>
+            <img id="scannerSnapshot" style="width: 100%; border: 1px solid #3f3f46; border-radius: 4px;" />
+          </div>
         </div>
       </div>
-      <div class="resizer-panel"></div>
       </div>
 
       <div id="panel-osd" class="draggable-panel">
@@ -795,11 +746,8 @@
           </div>
         </div>
       </div>
-      <div class="resizer-panel"></div>
       </div>
     </div>
-
-    <div class="splitter-col" id="split-2"></div>
 
     <!-- Column 3 -->
     <div id="col-3" class="layout-column">
@@ -823,11 +771,8 @@
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
       </button>
     </div>
-    <div class="resizer-panel"></div>
     </div>
     </div>
-
-    <div id="resizeOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:10000;"></div>
 
     <div id="hydrationPopup" class="hydration-popup">💧 Time to drink some water!</div>
     
@@ -857,6 +802,10 @@
           <input type="range" id="hydrationVolume" min="0" max="1" step="0.01" style="width: 100px; accent-color: #6366f1;">
         </div>
         <button id="testPopupBtn" class="record-btn" style="margin-top: 0.5rem;">Test Popup Now</button>
+        <div class="scanner-row" style="margin-top: 0.5rem;">
+          <label for="showScannerPreviewToggle" style="cursor: pointer;">Show Scanner Preview Button</label>
+          <input type="checkbox" id="showScannerPreviewToggle" style="cursor: pointer;" />
+        </div>
         
         <div class="divider"></div>
         <div class="label" style="margin-top: 1rem;">Layout Options</div>
@@ -1067,96 +1016,6 @@
   });
 }
 
-    /* --- RESIZING LOGIC --- */
-    let isResizing = false;
-    let currentResizer = null;
-    let resizeType = null; // 'col' or 'panel'
-    let startX, startY, startWidth, startHeight;
-    let targetElement = null;
-
-    document.addEventListener('mousedown', (e) => {
-      // Handle Column Resizing
-      if (e.target.classList.contains('splitter-col')) {
-        isResizing = true;
-        currentResizer = e.target;
-        
-        // Activate overlay to capture mouse events over webviews
-        const overlay = document.getElementById('resizeOverlay');
-        overlay.style.display = 'block';
-        overlay.style.cursor = 'col-resize';
-        document.body.classList.add('resizing');
-        
-        resizeType = 'col';
-        startX = e.clientX;
-        
-        // The column to the left of the splitter is the one we resize
-        targetElement = currentResizer.previousElementSibling;
-        startWidth = targetElement.getBoundingClientRect().width;
-        
-        currentResizer.classList.add('active');
-        // Disable transitions during resize for instant feedback
-        document.querySelectorAll('.layout-column').forEach(el => el.style.transition = 'none');
-        e.preventDefault();
-      } 
-      // Handle Panel Resizing
-      else if (e.target.classList.contains('resizer-panel')) {
-        isResizing = true;
-        currentResizer = e.target;
-        
-        const overlay = document.getElementById('resizeOverlay');
-        overlay.style.display = 'block';
-        overlay.style.cursor = 'row-resize';
-        document.body.classList.add('resizing');
-        
-        resizeType = 'panel';
-        startY = e.clientY;
-        
-        // The panel containing the resizer
-        targetElement = currentResizer.parentElement;
-        startHeight = targetElement.getBoundingClientRect().height;
-        
-        currentResizer.classList.add('active');
-        e.preventDefault();
-      }
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (!isResizing) return;
-
-      if (resizeType === 'col') {
-        const dx = e.clientX - startX;
-        const newWidth = startWidth + dx;
-        if (newWidth > 100) { // Minimum width constraint
-          targetElement.style.width = `${newWidth}px`;
-          targetElement.style.flex = 'none'; // Disable flex to enforce fixed width
-        }
-      } else if (resizeType === 'panel') {
-        const dy = e.clientY - startY;
-        const newHeight = startHeight + dy;
-        if (newHeight > 50) { // Minimum height constraint
-          targetElement.style.height = `${newHeight}px`;
-        }
-      }
-    });
-
-    document.addEventListener('mouseup', () => {
-      if (isResizing) {
-        isResizing = false;
-        
-        // Hide overlay and restore normal mouse interaction
-        document.getElementById('resizeOverlay').style.display = 'none';
-        document.body.classList.remove('resizing');
-        
-        if (currentResizer) currentResizer.classList.remove('active');
-        document.body.style.cursor = '';
-        
-        // Re-enable transitions
-        document.querySelectorAll('.layout-column').forEach(el => el.style.transition = '');
-        
-        saveLayout(); // Save the new sizes to settings
-      }
-    });
-
 
     /* --- AUTO SCANNER LOGIC --- */
     const autoScanToggle = document.getElementById('autoScanToggle');
@@ -1164,6 +1023,33 @@
     const setVoidCascadeAreaBtn = document.getElementById('setVoidCascadeAreaBtn');
     const scanAreaDisplay = document.getElementById('scanAreaDisplay');
     const scanPauseInput = document.getElementById('scanPauseInput');
+    const testScannerBtn = document.getElementById('testScannerBtn');
+    const scannerPreview = document.getElementById('scannerPreview');
+    const scannerSeenText = document.getElementById('scannerSeenText');
+    const scannerSnapshot = document.getElementById('scannerSnapshot');
+
+    testScannerBtn.addEventListener('click', async () => {
+      if (window.electronAPI && window.electronAPI.testScanner) {
+        testScannerBtn.textContent = "Scanning...";
+        testScannerBtn.disabled = true;
+        try {
+          const result = await window.electronAPI.testScanner();
+          scannerPreview.style.display = 'flex';
+          if (result.error) {
+            scannerSeenText.textContent = "Error: " + result.error;
+            scannerSnapshot.src = "";
+          } else {
+            scannerSeenText.textContent = result.text || "[No text detected]";
+            scannerSnapshot.src = result.image;
+          }
+        } catch (e) {
+          scannerSeenText.textContent = "Error: " + e;
+        } finally {
+          testScannerBtn.textContent = "Test Scanner (Preview)";
+          testScannerBtn.disabled = false;
+        }
+      }
+    });
 
     function updateScanAreaDisplay(areas) {
       // Handle both old format (single area) and new format (object with keys)
@@ -1253,6 +1139,25 @@
       header.addEventListener('click', () => {
         const isCollapsed = card.classList.toggle('collapsed');
         content.classList.toggle('collapsed');
+
+        const draggablePanel = card.closest('.draggable-panel');
+        if (draggablePanel) {
+          if (isCollapsed) {
+            // If resizing set a fixed height, save it and switch to auto so it shrinks
+            if (draggablePanel.style.height && draggablePanel.style.height !== 'auto') {
+              draggablePanel.dataset.savedHeight = draggablePanel.style.height;
+            }
+            draggablePanel.style.height = 'auto';
+          } else {
+            // Restore saved height if available
+            if (draggablePanel.dataset.savedHeight) {
+              draggablePanel.style.height = draggablePanel.dataset.savedHeight;
+              delete draggablePanel.dataset.savedHeight;
+            } else {
+              draggablePanel.style.height = 'auto';
+            }
+          }
+        }
         
         if (window.electronAPI) {
           uiSettings[key] = isCollapsed;
@@ -1454,9 +1359,13 @@
 
           uiSettings = settings.ui || {};
           
-          if (uiSettings.discordPanelOpen) {
-            discordPanel.style.display = 'block';
+          // Load Scanner Preview Button State
+          const showPreview = settings.ui.showScannerPreview !== false; // Default true
+          const showScannerPreviewToggle = document.getElementById('showScannerPreviewToggle');
+          if (showScannerPreviewToggle) {
+             showScannerPreviewToggle.checked = showPreview;
           }
+          toggleScannerPreview(showPreview);
 
           applyUISettings(uiSettings);
           updateColumnVisibility();
@@ -1691,13 +1600,43 @@
     const saveCustomLayoutBtn = document.getElementById('saveCustomLayoutBtn');
     const loadCustomLayoutBtn = document.getElementById('loadCustomLayoutBtn');
     const layoutContainer = document.getElementById('layoutContainer');
+    
+    const showScannerPreviewToggle = document.getElementById('showScannerPreviewToggle');
+    if (showScannerPreviewToggle) {
+      showScannerPreviewToggle.addEventListener('change', () => {
+        const show = showScannerPreviewToggle.checked;
+        toggleScannerPreview(show);
+        if (window.electronAPI) window.electronAPI.setUISettings({ showScannerPreview: show });
+      });
+    }
+
+    /* --- UPDATE CHECK LOGIC --- */
+    const checkForUpdateBtn = document.getElementById('checkForUpdateBtn');
+    const updateStatusEl = document.getElementById('updateStatus');
+
+    checkForUpdateBtn.addEventListener('click', () => {
+      if (window.electronAPI) window.electronAPI.checkForUpdate();
+    });
+
+    if (window.electronAPI) {
+      window.electronAPI.onUpdateStatus((event, message) => {
+        updateStatusEl.textContent = message;
+      });
+    }
+
+
+    function toggleScannerPreview(show) {
+      const btn = document.getElementById('testScannerBtn');
+      const preview = document.getElementById('scannerPreview');
+      if (btn) btn.style.display = show ? 'block' : 'none';
+      if (!show && preview) preview.style.display = 'none';
+    }
 
     let isEditingLayout = false;
 
     editLayoutToggle.addEventListener('change', () => {
       isEditingLayout = editLayoutToggle.checked;
       toggleEditMode(isEditingLayout);
-      updateColumnVisibility();
     });
 
     function toggleEditMode(enabled) {
@@ -1718,7 +1657,6 @@
       panel.addEventListener('dragend', () => {
         panel.classList.remove('dragging');
         saveLayout();
-        updateColumnVisibility();
       });
     });
 
@@ -1750,19 +1688,19 @@
 
     function getColumnData(colId) {
       const col = document.getElementById(colId);
+      if (!col) return { width: null, panels: [] };
       const panels = Array.from(col.children).map(child => ({
         id: child.id,
-        height: child.style.height || null
+        // height: child.style.height || null // Don't save height
       }));
       return {
-        width: col.style.width || null,
+        // width: col.style.width || null, // Don't save width
         panels: panels
       };
     }
 
     function saveLayout() {
       const layout = {
-        col1: getColumnData('col-1'),
         col2: getColumnData('col-2'),
         col3: getColumnData('col-3')
       };
@@ -1775,59 +1713,44 @@
       
       const applyCol = (colId, colData) => {
         const col = document.getElementById(colId);
+        if (!col) return;
         let panelIds = [];
-        let width = null;
 
-        // Handle old format (array of IDs) vs new format (object with width/panels)
         if (Array.isArray(colData)) {
           panelIds = colData;
         } else if (colData && typeof colData === 'object') {
           panelIds = colData.panels.map(p => typeof p === 'string' ? p : p.id);
-          width = colData.width;
-          // Apply heights
-          colData.panels.forEach(p => {
-            if (typeof p === 'object' && p.height) {
-              const panel = document.getElementById(p.id);
-              if (panel) panel.style.height = p.height;
-            }
-          });
         }
 
-        if (width) {
-          col.style.width = width;
-          col.style.flex = "none";
-        } else {
-          col.style.width = "";
-          col.style.flex = ""; // Reset to CSS default
-        }
+        // Reset styles
+        col.style.flex = "";
+        col.style.width = "";
 
         panelIds.forEach(id => {
           const panel = document.getElementById(id);
-          if (panel) col.appendChild(panel);
+          if (panel) {
+             col.appendChild(panel);
+             panel.style.height = ""; // Reset height
+          }
         });
       };
 
-      applyCol('col-1', layout.col1);
       applyCol('col-2', layout.col2);
       applyCol('col-3', layout.col3);
-      updateColumnVisibility();
     }
 
     // Presets
     const presets = {
       default: {
-        col1: { width: null, panels: [{id: 'panel-discord', height: '500px'}] },
         col2: { width: null, panels: [{id: 'panel-runner', height: null}, {id: 'panel-hotkey', height: null}, {id: 'panel-scanner', height: null}, {id: 'panel-osd', height: null}] },
         col3: { width: null, panels: [{id: 'panel-fissures', height: '100%'}] }
       },
       compact: {
-        col1: { width: null, panels: [{id: 'panel-runner', height: null}, {id: 'panel-fissures', height: '400px'}, {id: 'panel-hotkey', height: null}, {id: 'panel-scanner', height: null}, {id: 'panel-osd', height: null}, {id: 'panel-discord', height: '400px'}] },
-        col2: { width: null, panels: [] },
+        col2: { width: null, panels: [{id: 'panel-runner', height: null}, {id: 'panel-fissures', height: '400px'}, {id: 'panel-hotkey', height: null}, {id: 'panel-scanner', height: null}, {id: 'panel-osd', height: null}] },
         col3: { width: null, panels: [] }
       },
       wide: {
-        col1: { width: null, panels: [{id: 'panel-runner', height: null}, {id: 'panel-hotkey', height: null}, {id: 'panel-scanner', height: null}, {id: 'panel-osd', height: null}] },
-        col2: { width: null, panels: [{id: 'panel-fissures', height: '100%'}, {id: 'panel-discord', height: '400px'}] },
+        col2: { width: null, panels: [{id: 'panel-runner', height: null}, {id: 'panel-hotkey', height: null}, {id: 'panel-scanner', height: null}, {id: 'panel-osd', height: null}, {id: 'panel-fissures', height: '100%'}] },
         col3: { width: null, panels: [] }
       }
     };
@@ -1853,51 +1776,6 @@
         alert("No custom preset saved.");
       }
     });
-
-    function updateColumnVisibility() {
-      if (isEditingLayout) {
-        document.querySelectorAll('.layout-column').forEach(c => c.style.display = 'flex');
-        document.querySelectorAll('.splitter-col').forEach(s => s.style.display = 'block');
-        return;
-      }
-
-      const hasVisiblePanels = (colId) => {
-        const col = document.getElementById(colId);
-        if (!col) return false;
-        const panels = col.querySelectorAll('.draggable-panel');
-        for (let p of panels) {
-          if (p.style.display !== 'none') return true;
-        }
-        return false;
-      };
-
-      const col1Visible = hasVisiblePanels('col-1');
-      const col2Visible = hasVisiblePanels('col-2');
-      const col3Visible = hasVisiblePanels('col-3');
-
-      document.getElementById('col-1').style.display = col1Visible ? 'flex' : 'none';
-      document.getElementById('col-2').style.display = col2Visible ? 'flex' : 'none';
-      document.getElementById('col-3').style.display = col3Visible ? 'flex' : 'none';
-
-      // Show splitters only if the columns on both sides (conceptually) are visible
-      document.getElementById('split-1').style.display = (col1Visible && (col2Visible || col3Visible)) ? 'block' : 'none';
-      document.getElementById('split-2').style.display = (col2Visible && col3Visible) ? 'block' : 'none';
-    }
-
-    /* --- UPDATE CHECK LOGIC --- */
-    const checkForUpdateBtn = document.getElementById('checkForUpdateBtn');
-    const updateStatusEl = document.getElementById('updateStatus');
-
-    checkForUpdateBtn.addEventListener('click', () => {
-      if (window.electronAPI) window.electronAPI.checkForUpdate();
-    });
-
-    if (window.electronAPI) {
-      window.electronAPI.onUpdateStatus((event, message) => {
-        updateStatusEl.textContent = message;
-      });
-    }
-
     // Load on startup (moved to end to ensure all variables are defined)
     loadSettings();
 

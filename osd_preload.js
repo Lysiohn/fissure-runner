@@ -1,4 +1,3 @@
-// c:\Users\Lysio\Downloads\gamba wf\osd_preload.js
 const { ipcRenderer } = require('electron');
 
 ipcRenderer.on('update-osd-data', (event, data) => {

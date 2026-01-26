@@ -27,5 +27,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openExternal: (url) => ipcRenderer.send('open-external', url),
   setLayout: (layout) => ipcRenderer.send('set-layout', layout),
   checkForUpdate: () => ipcRenderer.send('check-for-update'),
-  onUpdateStatus: (callback) => ipcRenderer.on('update-status', callback)
+  onUpdateStatus: (callback) => ipcRenderer.on('update-status', callback),
+  testScanner: () => ipcRenderer.invoke('test-scanner'),
+  setVoidCascadeMode: (enabled) => ipcRenderer.send('set-void-cascade-mode', enabled),
+  setHotkeyEnabled: (enabled) => ipcRenderer.send('set-hotkey-enabled', enabled)
 });

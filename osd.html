@@ -36,6 +36,10 @@
       <div class="label" style="color: #facc15;">Relic</div>
       <div id="relic" class="value"></div>
     </div>
+    <div id="cycle-row" class="row" style="display: none; margin-bottom: 4px;">
+      <div class="label" style="color: #60a5fa;">Cycle</div>
+      <div id="cycle-info" class="value" style="font-size: 12px;"></div>
+    </div>
     <div class="row">
       <div class="label">Now</div>
       <div id="now" class="value">—</div>
@@ -45,5 +49,47 @@
       <div id="next" class="value">—</div>
     </div>
   </div>
+  <script>
+    window.osdAPI.onUpdateData((event, data) => {
+      const nowEl = document.getElementById('now');
+      const nextEl = document.getElementById('next');
+      const relicRow = document.getElementById('relic-row');
+      const relicVal = document.getElementById('relic');
+      const cycleRow = document.getElementById('cycle-row');
+      const cycleInfo = document.getElementById('cycle-info');
+
+      if (nowEl) nowEl.textContent = data.now || '—';
+      if (nextEl) nextEl.textContent = data.next || '—';
+      
+      if (data.relic && data.relic.trim() !== "") {
+        if (relicRow) relicRow.style.display = 'flex';
+        if (relicVal) relicVal.textContent = data.relic;
+      } else {
+        if (relicRow) relicRow.style.display = 'none';
+      }
+
+      if (data.cycleState) {
+        if (cycleRow) cycleRow.style.display = 'flex';
+        if (cycleInfo) {
+          cycleInfo.textContent = `${data.cycleCount} (${data.cycleState})`;
+          cycleInfo.style.color = data.cycleState === "New Cycle" ? "#10b981" : "#a1a1aa";
+        }
+      } else if (data.cycleCount > 0) {
+        if (cycleRow) cycleRow.style.display = 'flex';
+        if (cycleInfo) {
+          cycleInfo.textContent = data.cycleCount;
+          cycleInfo.style.color = "#fff";
+        }
+      } else {
+        if (cycleRow) cycleRow.style.display = 'none';
+      }
+    });
+
+    window.osdAPI.onUpdateStyle((event, style) => {
+      if (style.opacity !== undefined) {
+        document.getElementById('osd-wrapper').style.background = `rgba(9, 9, 11, ${style.opacity})`;
+      }
+    });
+  </script>
 </body>
 </html>

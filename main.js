@@ -36,6 +36,7 @@ if (typeof settings.autoScanPause === 'undefined') settings.autoScanPause = 30;
 if (typeof settings.osdEnabled === 'undefined') settings.osdEnabled = false;
 if (!settings.osdPosition) settings.osdPosition = { x: 100, y: 100 };
 if (typeof settings.osdOpacity === 'undefined') settings.osdOpacity = 1.0;
+if (typeof settings.osdLocked === 'undefined') settings.osdLocked = false;
 if (typeof settings.osdScale === 'undefined') settings.osdScale = 1.0;
 if (typeof settings.hotkeyEnabled === 'undefined') settings.hotkeyEnabled = true;
 if (typeof settings.voidCascadeMode === 'undefined') settings.voidCascadeMode = false;
@@ -43,6 +44,7 @@ if (typeof settings.relicName === 'undefined') settings.relicName = "";
 if (typeof settings.rotationMode === 'undefined') settings.rotationMode = "4b4";
 if (typeof settings.hydrationReminderEnabled === 'undefined') settings.hydrationReminderEnabled = false;
 if (typeof settings.hydrationSound === 'undefined') settings.hydrationSound = null;
+if (typeof settings.hydrationIntervalMinutes === 'undefined') settings.hydrationIntervalMinutes = 60;
 if (typeof settings.hydrationSoundVolume === 'undefined') settings.hydrationSoundVolume = 0.5;
 if (!settings.windowBounds) settings.windowBounds = { width: 750, height: 1050 };
 if (!settings.ui) settings.ui = {};
@@ -169,6 +171,11 @@ ipcMain.on("set-layout", (event, layout) => {
 
 ipcMain.on("set-hydration-reminder-enabled", (event, enabled) => {
   settings.hydrationReminderEnabled = enabled;
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+});
+
+ipcMain.on('set-hydration-interval', (event, minutes) => {
+  settings.hydrationIntervalMinutes = minutes;
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 });
 
@@ -315,8 +322,16 @@ ipcMain.on('set-osd-scale', (event, scale) => {
   if (osdWin) {
     const { x, y } = osdWin.getBounds();
     osdWin.webContents.setZoomFactor(scale);
-    osdWin.setBounds({ x, y, width: Math.round(220 * scale), height: Math.round(80 * scale) });
+    osdWin.setBounds({ x, y, width: Math.round(220 * scale), height: Math.round(140 * scale) });
     osdWin.setAlwaysOnTop(true, "screen-saver");
+  }
+});
+
+ipcMain.on('set-osd-locked', (event, locked) => {
+  settings.osdLocked = locked;
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  if (osdWin && !osdWin.isDestroyed()) {
+    osdWin.setIgnoreMouseEvents(locked, { forward: true });
   }
 });
 
@@ -338,7 +353,7 @@ function createOSDWindow() {
   if (osdWin) return;
   osdWin = new BrowserWindow({
     width: Math.round(220 * settings.osdScale),
-    height: Math.round(80 * settings.osdScale),
+    height: Math.round(140 * settings.osdScale),
     x: settings.osdPosition.x,
     y: settings.osdPosition.y,
     frame: false,
@@ -358,6 +373,10 @@ function createOSDWindow() {
     osdWin.webContents.setZoomFactor(settings.osdScale);
     osdWin.webContents.send('update-osd-style', { opacity: settings.osdOpacity });
   });
+
+  if (settings.osdLocked) {
+    osdWin.setIgnoreMouseEvents(true, { forward: true });
+  }
 
   osdWin.loadFile('osd.html');
   osdWin.on('moved', () => {
@@ -430,8 +449,11 @@ async function scanScreen() {
     console.log(`[Scanner] ${upperText.replace(/\s+/g, ' ')}`);
 
     let detected = false;
+    const cleanText = upperText.replace(/\s+/g, '');
+
     if (settings.voidCascadeMode) {
-      if (/SELECT\s+(A\s+)?REL?[IN][CE]/.test(upperText)) detected = true;
+      // Flexible regex to handle OCR errors like "RENE" and "RECHT"
+      if (/SELECTA?RE[LCN][IHE][CTE]/.test(cleanText)) detected = true;
     } else if (upperText.includes("MISSION COMPLETE")) {
       detected = true;
     }
@@ -470,9 +492,26 @@ ipcMain.handle('test-scanner', async () => {
   }
 
   const { data: { text } } = await worker.recognize(image.toPNG());
-  console.log('[Test Scanner] Detected:', text.trim());
+  const upperText = text.toUpperCase();
+  const cleanText = upperText.replace(/\s+/g, '');
+  console.log('[Test Scanner] Raw:', text.trim(), '| Cleaned:', cleanText);
+
+  let match = false;
+  const currentModeIsCascade = settings.voidCascadeMode;
+  if (currentModeIsCascade) {
+    // Use the same flexible regex as the main scanner
+    if (/SELECTA?RE[LCN][IHE][CTE]/.test(cleanText)) match = true;
+  } else {
+    if (upperText.includes("MISSION COMPLETE")) {
+      match = true;
+    }
+  }
+
   return { 
-    text: text.trim(), 
+    rawText: text.trim(),
+    processedText: cleanText,
+    match: match,
+    mode: currentModeIsCascade ? 'Void Cascade' : 'Normal',
     image: image.toDataURL() 
   };
 });

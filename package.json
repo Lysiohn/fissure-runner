@@ -1,0 +1,23 @@
+{
+  "name": "fissure-runner",
+  "version": "1.1.0",
+  "description": "Warframe Fissure Runner",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "electron-updater": "^6.7.3",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "electron": "^40.0.0",
+    "electron-builder": "^26.4.0",
+    "electron-packager": "^17.1.2"
+  }
+}

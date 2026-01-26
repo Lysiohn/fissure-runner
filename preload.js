@@ -1,0 +1,31 @@
+const { contextBridge, ipcRenderer } = require("electron");
+
+contextBridge.exposeInMainWorld("electronAPI", {
+  onHotkeyNext: (callback) => ipcRenderer.on("hotkey-next", callback),
+  setHotkey: (key) => ipcRenderer.send("set-hotkey", key),
+  onLoadHotkey: (callback) => ipcRenderer.on("load-hotkey", callback),
+  getFissures: () => ipcRenderer.invoke("get-fissures"),
+  getSettings: () => ipcRenderer.invoke("get-settings"),
+  setFilters: (filters) => ipcRenderer.send("set-filters", filters),
+  openScannerWindow: (type) => ipcRenderer.send('open-scanner-window', type),
+  onScanAreaUpdated: (callback) => ipcRenderer.on('scan-area-updated', callback),
+  onMissionCompleteDetected: (callback) => ipcRenderer.on('mission-complete-detected', callback),
+  toggleAutoScan: (enabled) => ipcRenderer.send('toggle-auto-scan', enabled),
+  setAutoScanPause: (seconds) => ipcRenderer.send('set-auto-scan-pause', seconds),
+  setOSDEnabled: (enabled) => ipcRenderer.send('set-osd-enabled', enabled),
+  updateOSD: (data) => ipcRenderer.send('update-osd', data),
+  setOSDOpacity: (opacity) => ipcRenderer.send('set-osd-opacity', opacity),
+  setOSDScale: (scale) => ipcRenderer.send('set-osd-scale', scale),
+  setUISettings: (settings) => ipcRenderer.send('set-ui-settings', settings),
+  setRelicName: (name) => ipcRenderer.send('set-relic-name', name),
+  setRotationMode: (mode) => ipcRenderer.send('set-rotation-mode', mode),
+  setHydrationReminderEnabled: (enabled) => ipcRenderer.send('set-hydration-reminder-enabled', enabled),
+  selectHydrationSound: () => ipcRenderer.invoke('select-hydration-sound'),
+  setHydrationSound: (path) => ipcRenderer.send('set-hydration-sound', path),
+  setHydrationSoundVolume: (volume) => ipcRenderer.send('set-hydration-sound-volume', volume),
+  readHydrationSound: () => ipcRenderer.invoke('read-hydration-sound'),
+  openExternal: (url) => ipcRenderer.send('open-external', url),
+  setLayout: (layout) => ipcRenderer.send('set-layout', layout),
+  checkForUpdate: () => ipcRenderer.send('check-for-update'),
+  onUpdateStatus: (callback) => ipcRenderer.on('update-status', callback)
+});

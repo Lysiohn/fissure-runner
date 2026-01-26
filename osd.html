@@ -1,0 +1,50 @@
+<!-- c:\Users\Lysio\Downloads\gamba wf\osd.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      margin: 0;
+      background: transparent;
+      color: #e4e4e7;
+      font-family: 'Segoe UI', sans-serif;
+      user-select: none;
+      overflow: hidden;
+      height: 100%;
+      box-sizing: border-box;
+    }
+    #osd-wrapper {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 100%;
+      padding: 10px;
+      background: rgba(9, 9, 11, 0.9);
+      border-radius: 8px;
+      border: 1px solid #27272a;
+      box-sizing: border-box;
+      -webkit-app-region: drag;
+    }
+    .row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+    .label { color: #a1a1aa; font-weight: 700; font-size: 10px; text-transform: uppercase; min-width: 35px; }
+    .value { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; flex-shrink: 1; }
+    #now { color: #10b981; }
+  </style>
+</head>
+<body>
+  <div id="osd-wrapper">
+    <div id="relic-row" class="row" style="display: none;">
+      <div class="label" style="color: #facc15;">Relic</div>
+      <div id="relic" class="value"></div>
+    </div>
+    <div class="row">
+      <div class="label">Now</div>
+      <div id="now" class="value">—</div>
+    </div>
+    <div class="row">
+      <div class="label">Next</div>
+      <div id="next" class="value">—</div>
+    </div>
+  </div>
+</body>
+</html>

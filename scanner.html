@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Scan Area Selector</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: rgba(0, 0, 0, 0.3);
+            cursor: crosshair;
+            font-family: sans-serif;
+            color: white;
+            user-select: none;
+        }
+        #selection {
+            border: 2px dashed #ff4747;
+            position: absolute;
+            background-color: rgba(255, 0, 0, 0.15);
+            box-sizing: border-box;
+        }
+        #info {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background-color: rgba(0,0,0,0.7);
+            border-radius: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>Click and drag to select the scan area</h1>
+        <p>Press ESC to cancel</p>
+    </div>
+    <div id="selection"></div>
+
+    <script>
+        const selectionDiv = document.getElementById('selection');
+        const infoDiv = document.getElementById('info');
+        let startX, startY;
+        let isDrawing = false;
+
+        document.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            
+            isDrawing = true;
+            infoDiv.style.display = 'none';
+            startX = e.clientX;
+            startY = e.clientY;
+            selectionDiv.style.left = startX + 'px';
+            selectionDiv.style.top = startY + 'px';
+            selectionDiv.style.width = '0px';
+            selectionDiv.style.height = '0px';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const currentX = e.clientX;
+            const currentY = e.clientY;
+
+            const width = currentX - startX;
+            const height = currentY - startY;
+
+            selectionDiv.style.width = Math.abs(width) + 'px';
+            selectionDiv.style.height = Math.abs(height) + 'px';
+            selectionDiv.style.left = (width > 0 ? startX : currentX) + 'px';
+            selectionDiv.style.top = (height > 0 ? startY : currentY) + 'px';
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            const rect = {
+                x: parseInt(selectionDiv.style.left),
+                y: parseInt(selectionDiv.style.top),
+                width: parseInt(selectionDiv.style.width),
+                height: parseInt(selectionDiv.style.height)
+            };
+
+            if (rect.width > 10 && rect.height > 10) {
+                window.electronAPI.setScanArea(rect);
+            } else {
+                window.close();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.close();
+            }
+        });
+    </script>
+</body>
+</html>

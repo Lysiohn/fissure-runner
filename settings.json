@@ -1,0 +1,40 @@
+{
+  "hotkey": "PageUp",
+  "hiddenMissionTypes": [
+    "Corruption",
+    "Defense",
+    "Disruption",
+    "Interception",
+    "Mobile Defense",
+    "Rescue",
+    "Sabotage",
+    "Skirmish",
+    "Spy",
+    "Survival",
+    "Volatile"
+  ],
+  "showRailjack": false,
+  "scanArea": {
+    "x": 1439,
+    "y": 16,
+    "width": 575,
+    "height": 120
+  },
+  "autoScanEnabled": true,
+  "autoScanPause": 30,
+  "hiddenTiers": [
+    "Requiem"
+  ],
+  "osdEnabled": true,
+  "osdPosition": {
+    "x": 1484,
+    "y": 305
+  },
+  "osdOpacity": 0.7,
+  "osdScale": 1,
+  "ui": {
+    "hotkeySettingsCollapsed": true,
+    "autoScannerSettingsCollapsed": true,
+    "osdSettingsCollapsed": true
+  }
+}

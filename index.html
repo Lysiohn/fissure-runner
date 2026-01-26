@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fissure Runner</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      height: 100vh;
+      margin: 0;
+      background: #09090b;
+      color: #e4e4e7;
+      overflow: hidden; /* Prevent body scroll, let containers scroll */
+      font-size: 13px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #52525b;
+    }
+
+    .app-container {
+      display: flex;
+      height: 100%;
+      width: 100%;
+      overflow-x: auto;
+      background: #09090b;
+    }
+
+    .layout-column {
+      flex: 1 1 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1rem;
+      overflow-y: auto;
+      min-width: 320px;
+      transition: flex 0.3s;
+    }
+
+    .layout-column.editing {
+      border: 1px dashed #3f3f46;
+      background: rgba(255, 255, 255, 0.02);
+      min-height: 100px;
+    }
+
+    /* ... existing styles ... */
+
+    .splitter-col {
+      width: 12px;
+      cursor: col-resize;
+      background: transparent;
+      flex: none;
+      z-index: 50;
+      margin: 0 -6px; /* Centers the splitter between columns */
+      position: relative;
+    }
+    .splitter-col:hover, .splitter-col.active {
+      background: rgba(99, 102, 241, 0.5);
+    }
+
+    .draggable-panel {
+      position: relative;
+      transition: transform 0.2s, box-shadow 0.2s;
+      overflow: hidden;
+      padding-bottom: 8px; /* Reserves space for the bottom resizer */
+    }
+
+    .resizer-panel {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 8px;
+      cursor: row-resize;
+      z-index: 10;
+    }
+    .resizer-panel:hover, .resizer-panel.active {
+      background: rgba(99, 102, 241, 0.2);
+    }
+
+    /* IMPORTANT: This prevents the Discord view from stealing your mouse while resizing */
+    body.resizing iframe, body.resizing webview {
+      pointer-events: none;
+    }
+
+
+    #wrapper {
+      padding: 1.25rem;
+      border-radius: 8px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #a1a1aa;
+      margin-bottom: 0.25rem;
+      font-weight: 600;
+    }
+
+    .value {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #fff;
+    }
+
+    .divider {
+      height: 1px;
+      background: #27272a;
+      margin: 0.75rem 0;
+    }
+
+    .counter-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      color: #a1a1aa;
+    }
+
+    .mode-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 0.4rem 0;
+      font-size: 0.8rem;
+      border-radius: 6px;
+      border: 1px solid #27272a;
+      background: #27272a;
+      color: #a1a1aa;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .mode-btn:hover {
+      background: #3f3f46;
+      color: #fff;
+    }
+
+    .mode-btn.active {
+      background: #6366f1;
+      border-color: #6366f1;
+      color: white;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #nextBtn {
+      background: #10b981;
+      color: #000;
+    }
+
+    #nextBtn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+    #resetBtn {
+      background: #3f3f46;
+      color: #e4e4e7;
+    }
+
+    #resetBtn:hover { background: #52525b; transform: translateY(-1px); }
+
+    #startBtn {
+      background: #f59e0b;
+      color: #000;
+      flex: none;
+      margin-left: 0;
+    }
+
+    #startBtn:hover { filter: brightness(1.1); }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    /* Inputs */
+    input[type="text"], input[type="number"] {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: #e4e4e7;
+      border-radius: 6px;
+      padding: 0.5rem;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    input[type="text"]:focus, input[type="number"]:focus {
+      border-color: #6366f1;
+    }
+
+    /* --- HOTKEY SETTINGS CSS (fixed) --- */
+
+    .settings-card {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      width: 100%;
+      box-sizing: border-box;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 1.5rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .settings-header .chevron {
+      width: 16px;
+      height: 16px;
+      stroke: #a1a1aa;
+      transition: transform 0.2s ease-in-out;
+    }
+
+    .settings-content {
+      padding: 0 1.5rem 1.5rem 1.5rem;
+      transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out, visibility 0.3s;
+      max-height: 1000px; /* Large enough to not clip content */
+      overflow: hidden;
+    }
+
+    .settings-content.collapsed {
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      visibility: hidden;
+    }
+
+    .settings-card.collapsed .chevron {
+      transform: rotate(-90deg);
+    }
+
+    #hotkeySettings, #autoScannerSettings, #osdSettings {
+      box-shadow: none;
+      border: none;
+    }
+
+    .settings-header h3 {
+      margin: 0;
+      font-size: 0.9rem;
+      color: #e4e4e7;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .settings-card[data-setting-key="hotkeySettingsCollapsed"] .settings-header h3::before {
+        content: '';
+        display: block;
+        width: 3px;
+        height: 1em;
+        background: #facc15;
+        border-radius: 2px;
+    }
+
+    .hotkey-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    .hotkey-label {
+      color: #a1a1aa;
+    }
+
+    .hotkey-value {
+      font-weight: bold;
+      color: #10b981;
+      background: rgba(16, 185, 129, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+
+    .record-btn {
+      width: 100%;
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: #e4e4e7;
+    }
+
+    .record-btn:hover {
+      background: #3f3f46;
+      border-color: #6366f1;
+    }
+
+    .record-status {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: #a1a1aa;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .recording {
+      opacity: 1 !important;
+      color: #f87171 !important;
+    }
+
+    /* --- AUTO SCANNER CSS --- */
+    .settings-card[data-setting-key="autoScannerSettingsCollapsed"] .settings-header h3::before {
+        content: '';
+        display: block;
+        width: 3px;
+        height: 1em;
+        background: #6366f1;
+        border-radius: 2px;
+    }
+    .scanner-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      font-size: 0.9rem;
+      color: #a1a1aa;
+    }
+    #setScanAreaBtn {
+      width: 100%;
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: #e4e4e7;
+      margin-bottom: 0.5rem;
+    }
+    #setScanAreaBtn:hover { background: #3f3f46; border-color: #3b82f6; }
+    #scanAreaDisplay {
+      font-size: 0.75rem;
+      color: #71717a;
+      font-style: italic;
+      text-align: center;
+    }
+    #scanPauseInput {
+      width: 50px;
+      background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px;
+      text-align: center;
+    }
+
+    /* --- OSD SETTINGS CSS --- */
+    .settings-card[data-setting-key="osdSettingsCollapsed"] .settings-header h3::before {
+        content: '';
+        display: block;
+        width: 3px;
+        height: 1em;
+        background: #10b981;
+        border-radius: 2px;
+    }
+
+    /* --- FISSURE SIDEBAR CSS --- */
+    .fissure-panel-content {
+      background: #121214;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      height: 100%;
+      min-height: 400px;
+    }
+
+    .fissure-header {
+      padding: 1rem;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #e4e4e7;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .refresh-btn {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: #a1a1aa;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.7rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .refresh-btn:hover { background: #3f3f46; color: #fff; }
+
+    .fissure-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+      padding-bottom: 4rem;
+    }
+
+    .fissure-group {
+      margin-bottom: 0.5rem;
+    }
+
+    .group-header {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #71717a;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      background: rgba(255,255,255,0.03);
+      border-radius: 4px;
+    }
+
+    /* Filter Menu */
+    .filter-menu {
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      padding: 0.5rem;
+      display: none;
+      flex-direction: column;
+      gap: 0.25rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .filter-menu.visible {
+      display: flex;
+    }
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: #d4d4d8;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+    }
+    .filter-row:hover {
+        background: #27272a;
+    }
+    .filter-row label {
+      cursor: pointer;
+      user-select: none;
+      flex: 1;
+    }
+    .filter-row input[type="checkbox"] {
+      accent-color: #6366f1;
+      cursor: pointer;
+    }
+
+    .fissure-item {
+      background: #1e1e21;
+      margin-bottom: 2px;
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      border-left: 3px solid #555;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.1s;
+    }
+    .fissure-item:hover {
+        background: #27272a;
+    }
+
+    .fissure-item.Lith { border-color: #a8a29e; }
+    .fissure-item.Meso { border-color: #60a5fa; }
+    .fissure-item.Neo { border-color: #f87171; }
+    .fissure-item.Axi { border-color: #facc15; }
+    .fissure-item.Requiem { border-color: #a78bfa; }
+    .fissure-item.Omnia { border-color: #10b981; }
+
+    .fissure-info {
+      display: flex;
+      flex-direction: column;
+    }
+    .fissure-main {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #f4f4f5;
+      display: flex;
+      align-items: center;
+    }
+    .sp-icon {
+      width: 14px;
+      height: 14px;
+      margin-left: 6px;
+      fill: #ef4444;
+    }
+    .fissure-sub {
+      font-size: 0.7rem;
+      color: #a1a1aa;
+    }
+    .fissure-timer {
+      font-size: 0.75rem;
+      color: #a1a1aa;
+      text-align: right;
+      min-width: 60px;
+      font-variant-numeric: tabular-nums;
+      background: rgba(0,0,0,0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .settings-btn {
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+      top: auto;
+      background: #18181b;
+      border: 1px solid #27272a;
+      color: #a1a1aa;
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 50%;
+      transition: background 0.2s, color 0.2s;
+      z-index: 10;
+      width: auto;
+      flex: none;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .discord-col {
+      width: 100%;
+      height: 100%;
+      background: #313338;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .discord-header {
+      padding: 0.75rem;
+      background: #2b2d31;
+      border-bottom: 1px solid #1e1f22;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #f2f3f5;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .settings-btn:hover {
+      background: #27272a;
+      color: #fff;
+    }
+    .settings-btn svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-overlay.visible {
+      display: flex;
+    }
+    .modal-content {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 1.5rem;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .modal-header h3 {
+      margin: 0;
+      color: #e4e4e7;
+      font-size: 1.1rem;
+    }
+    .close-modal {
+      background: transparent;
+      border: none;
+      color: #a1a1aa;
+      cursor: pointer;
+      padding: 0;
+      width: auto;
+      flex: none;
+    }
+    .close-modal:hover {
+      color: #fff;
+    }
+
+    .hydration-popup {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #10b981;
+      color: #fff;
+      padding: 0.8rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+      font-weight: 600;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .hydration-popup.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-container" id="layoutContainer">
+    <!-- Column 1 -->
+    <div id="col-1" class="layout-column">
+    <!-- DISCORD COLUMN -->
+    <div id="panel-discord" class="draggable-panel" style="display: none;">
+     <div id="discordCol" class="discord-col">
+      <div class="discord-header">
+        <span>VRC Discord Channel</span>
+        <button id="closeDiscordBtn" class="refresh-btn" style="width: auto; padding: 0.25rem 0.6rem;">Hide</button>
+      </div>
+      <webview id="discordWebview" partition="persist:discord" src="https://discord.com/channels/780376195182493707/889872820300038174" style="flex:1; width:100%; height:100%;" useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" preload="discord_preload.js"></webview>
+     </div>
+     <div class="resizer-panel"></div>
+    </div>
+    </div>
+
+    <div class="splitter-col" id="split-1"></div>
+
+    <!-- Column 2 -->
+    <div id="col-2" class="layout-column">
+      <div id="panel-runner" class="draggable-panel">
+      <div id="wrapper">
+        <div style="margin-bottom: 0.75rem;">
+          <div class="label">Current Relic</div>
+          <input type="text" id="relicName" placeholder="e.g., Axi A1" style="width: 100%; box-sizing: border-box;">
+        </div>
+        <div>
+          <div class="label">Now running</div>
+          <div id="now" class="value">—</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div>
+          <div class="label">Next / upcoming</div>
+          <div id="next" class="value">Select mode & start relic</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="counter-row">
+          <span>Total cycles:</span>
+          <span id="counter">0</span>
+        </div>
+
+        <div class="mode-row">
+          <button class="mode-btn rotation-btn active" data-mode="4b4">4b4</button>
+          <button class="mode-btn rotation-btn" data-mode="2b2">2b2</button>
+          <button class="mode-btn rotation-btn" data-mode="1b1">1b1</button>
+          <button id="cascadeBtn" class="mode-btn">Cascade</button>
+        </div>
+
+        <div class="buttons">
+          <button id="startBtn">Start: Running</button>
+          <button id="nextBtn">Next</button>
+          <button id="resetBtn">Reset</button>
+        </div>
+      </div>
+      <div class="resizer-panel"></div>
+      </div>
+
+      <div id="panel-hotkey" class="draggable-panel">
+      <div class="settings-card" data-setting-key="hotkeySettingsCollapsed" style="width: 100%;">
+        <div class="settings-header">
+          <h3>Hotkey Settings</h3>
+          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+        </div>
+        <div id="hotkeySettings" class="settings-content">
+          <div class="hotkey-row">
+            <span class="hotkey-label">Current Hotkey:</span>
+            <span id="currentHotkey" class="hotkey-value"></span>
+          </div>
+          <div class="hotkey-row">
+            <label for="hotkeyEnabledToggle" style="cursor: pointer; color: #a1a1aa;">Enable Hotkey</label>
+            <input type="checkbox" id="hotkeyEnabledToggle" style="cursor: pointer;" />
+          </div>
+          <button id="recordHotkeyBtn" class="record-btn">Record New Hotkey</button>
+          <div id="recordStatus" class="record-status">Press any key…</div>
+        </div>
+      </div>
+      <div class="resizer-panel"></div>
+      </div>
+
+      <div id="panel-scanner" class="draggable-panel">
+      <div class="settings-card" data-setting-key="autoScannerSettingsCollapsed" style="width: 100%;">
+        <div class="settings-header">
+          <h3>Auto-Scanner</h3>
+          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+        </div>
+        <div id="autoScannerSettings" class="settings-content">
+          <div class="scanner-row">
+            <label for="autoScanToggle" style="cursor: pointer;">Enable Auto-Scanner</label>
+            <input type="checkbox" id="autoScanToggle" style="cursor: pointer;" />
+          </div>
+          <div class="scanner-row">
+            <label for="scanPauseInput">Pause (seconds)</label>
+            <input type="number" id="scanPauseInput" min="5" value="30" />
+          </div>
+          <button id="setScanAreaBtn">Set Normal Scan Area</button>
+          <button id="setVoidCascadeAreaBtn" class="record-btn" style="margin-top: 0.5rem;">Set Void Cascade Area</button>
+          <div id="scanAreaDisplay">No area set.</div>
+        </div>
+      </div>
+      <div class="resizer-panel"></div>
+      </div>
+
+      <div id="panel-osd" class="draggable-panel">
+      <div class="settings-card" data-setting-key="osdSettingsCollapsed" style="width: 100%;">
+        <div class="settings-header">
+          <h3>On-Screen Display</h3>
+          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+        </div>
+        <div id="osdSettings" class="settings-content">
+          <div class="scanner-row" style="margin-bottom:0.75rem;">
+            <label for="osdToggle" style="cursor: pointer; font-weight:600; color:#e4e4e7;">Enable OSD</label>
+            <input type="checkbox" id="osdToggle" style="cursor: pointer;" />
+          </div>
+          <div class="scanner-row" style="margin-top: 0.5rem;">
+            <label for="osdOpacity">Background Opacity</label>
+            <input type="range" id="osdOpacity" min="0.2" max="1" step="0.1" style="width: 100px; accent-color: #6366f1;">
+          </div>
+          <div class="scanner-row">
+            <label for="osdScale">Size</label>
+            <input type="range" id="osdScale" min="0.5" max="2.0" step="0.1" style="width: 100px; accent-color: #6366f1;">
+          </div>
+        </div>
+      </div>
+      <div class="resizer-panel"></div>
+      </div>
+    </div>
+
+    <div class="splitter-col" id="split-2"></div>
+
+    <!-- Column 3 -->
+    <div id="col-3" class="layout-column">
+    <div id="panel-fissures" class="draggable-panel" style="height: 100%;">
+    <div class="fissure-panel-content">
+      <div class="fissure-header">
+        <span>Active Fissures</span>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button id="toggleFilters" class="refresh-btn">Filters</button>
+          <span id="clock" style="font-size: 0.8rem; color: #9ca3af; font-variant-numeric: tabular-nums;"></span>
+          <button id="refreshFissures" class="refresh-btn">Refresh</button>
+        </div>
+      </div>
+      <div id="filterMenu" class="filter-menu">
+        <!-- Filters injected here -->
+      </div>
+      <div id="fissureList" class="fissure-list">
+        <div style="text-align:center; color:#666; margin-top:2rem;">Loading...</div>
+      </div>
+      <button id="settingsBtn" class="settings-btn" title="General Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+      </button>
+    </div>
+    <div class="resizer-panel"></div>
+    </div>
+    </div>
+
+    <div id="resizeOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:10000;"></div>
+
+    <div id="hydrationPopup" class="hydration-popup">💧 Time to drink some water!</div>
+    
+    <!-- General Settings Modal -->
+    <div id="settingsModal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>General Settings</h3>
+          <button id="closeSettingsBtn" class="close-modal"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+        </div>
+        <div class="scanner-row">
+          <label for="hydrationToggle" style="cursor: pointer;">Hydration Reminder (Every 1h)</label>
+          <input type="checkbox" id="hydrationToggle" style="cursor: pointer;" />
+        </div>
+        <div class="scanner-row" style="margin-top: 1rem; flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+          <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+            <span style="color:#a1a1aa; font-size:0.9rem;">Sound:</span>
+            <span id="soundName" style="color:#fff; font-size:0.8rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Default (QuackReverb)</span>
+          </div>
+          <div style="display:flex; gap:0.5rem; width:100%;">
+            <button id="selectSoundBtn" class="refresh-btn" style="flex:1; padding:0.5rem;">Select File</button>
+            <button id="resetSoundBtn" class="refresh-btn" style="flex:0 0 auto; background:#ef4444; color:white; display:none; padding:0.5rem 0.8rem;">X</button>
+          </div>
+        </div>
+        <div class="scanner-row" style="margin-top: 0.5rem;">
+          <label for="hydrationVolume">Volume</label>
+          <input type="range" id="hydrationVolume" min="0" max="1" step="0.01" style="width: 100px; accent-color: #6366f1;">
+        </div>
+        <button id="testPopupBtn" class="record-btn" style="margin-top: 0.5rem;">Test Popup Now</button>
+        
+        <div class="divider"></div>
+        <div class="label" style="margin-top: 1rem;">Layout Options</div>
+        <div class="scanner-row">
+          <label for="editLayoutToggle" style="cursor: pointer;">Edit Layout (Drag & Drop)</label>
+          <input type="checkbox" id="editLayoutToggle" style="cursor: pointer;" />
+        </div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+          <button id="presetDefaultBtn" class="refresh-btn" style="flex:1;">Default</button>
+          <button id="presetCompactBtn" class="refresh-btn" style="flex:1;">Compact</button>
+          <button id="presetWideBtn" class="refresh-btn" style="flex:1;">2-Col</button>
+        </div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+          <button id="saveCustomLayoutBtn" class="refresh-btn" style="flex:1; border-color: #10b981; color: #10b981;">Save Custom</button>
+          <button id="loadCustomLayoutBtn" class="refresh-btn" style="flex:1;">Load Custom</button>
+        </div>
+        
+        <div class="divider"></div>
+        <div class="label" style="margin-top: 1rem;">Updates</div>
+        <button id="checkForUpdateBtn" class="record-btn">Check for Updates</button>
+        <div id="updateStatus" style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.5rem; text-align: center;"></div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+  </style>
+
+  <script>
+    /* --- your relic picker logic stays unchanged --- */
+
+    const RUNNING = "Running relic";
+    const TRASH = "Trash relic";
+
+    const nowEl = document.getElementById("now");
+    const nextEl = document.getElementById("next");
+    const counterEl = document.getElementById("counter");
+    const nextBtn = document.getElementById("nextBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const startBtn = document.getElementById("startBtn");
+    const rotationBtns = document.querySelectorAll(".rotation-btn");
+    const cascadeBtn = document.getElementById("cascadeBtn");
+    const relicNameInput = document.getElementById("relicName");
+
+    let currentMode = "4b4";
+    let upcoming = null;
+    let counter = 0;
+    let startRelic = RUNNING;
+    let trashCount = 0;
+    let pressCount = 0;
+    let isCascadeMode = false;
+
+    rotationBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        rotationBtns.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentMode = btn.dataset.mode;
+        if (window.electronAPI && window.electronAPI.setRotationMode) {
+          window.electronAPI.setRotationMode(currentMode);
+        }
+      });
+    });
+
+    cascadeBtn.addEventListener("click", () => {
+      isCascadeMode = !isCascadeMode;
+      cascadeBtn.classList.toggle("active", isCascadeMode);
+      if (window.electronAPI && window.electronAPI.setVoidCascadeMode) {
+        window.electronAPI.setVoidCascadeMode(isCascadeMode);
+      }
+    });
+
+    relicNameInput.addEventListener("input", () => {
+      if (window.electronAPI && window.electronAPI.setRelicName) {
+        window.electronAPI.setRelicName(relicNameInput.value);
+      }
+    });
+
+    startBtn.addEventListener("click", () => {
+      startRelic = startRelic === RUNNING ? TRASH : RUNNING;
+      startBtn.textContent = `Start: ${startRelic}`;
+      if (upcoming !== null) {
+        upcoming = startRelic;
+        nextEl.textContent = upcoming;
+      }
+      broadcastOSD();
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (upcoming === null) {
+        upcoming = startRelic;
+        nextEl.textContent = upcoming;
+        broadcastOSD();
+        return;
+      }
+
+      nowEl.textContent = upcoming;
+      pressCount++;
+
+      if (currentMode === "4b4" && pressCount % 1 === 0) counter++;
+      else if (currentMode === "2b2" && pressCount % 2 === 0) counter++;
+      else if (currentMode === "1b1" && pressCount % 4 === 0) counter++;
+
+      counterEl.textContent = counter;
+
+      if (currentMode === "4b4") {
+        upcoming = RUNNING;
+      } else if (currentMode === "2b2") {
+        upcoming = (upcoming === RUNNING) ? TRASH : RUNNING;
+      } else if (currentMode === "1b1") {
+        if (upcoming === RUNNING) {
+          upcoming = TRASH;
+          trashCount = 1;
+        } else if (trashCount < 3) {
+          upcoming = TRASH;
+          trashCount++;
+        } else {
+          upcoming = RUNNING;
+          trashCount = 0;
+        }
+      }
+
+      nextEl.textContent = upcoming;
+      broadcastOSD();
+    });
+
+    resetBtn.addEventListener("click", () => {
+      counter = 0;
+      pressCount = 0;
+      trashCount = 0;
+      upcoming = null;
+      nowEl.textContent = "—";
+      nextEl.textContent = "Select mode & start relic";
+      counterEl.textContent = counter;
+      broadcastOSD();
+    });
+
+    /* --- HOTKEY UI LOGIC --- */
+
+    const recordBtn = document.getElementById("recordHotkeyBtn");
+    const recordStatus = document.getElementById("recordStatus");
+    const currentHotkeyEl = document.getElementById("currentHotkey");
+    const hotkeyEnabledToggle = document.getElementById("hotkeyEnabledToggle");
+
+    let recording = false;
+
+    hotkeyEnabledToggle.addEventListener("change", () => {
+      if (window.electronAPI && window.electronAPI.setHotkeyEnabled) {
+        window.electronAPI.setHotkeyEnabled(hotkeyEnabledToggle.checked);
+      }
+    });
+
+    recordBtn.addEventListener("click", () => {
+      recording = true;
+      recordStatus.classList.add("recording");
+      recordStatus.textContent = "Listening… press any key";
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (!recording) return;
+
+      e.preventDefault();
+
+      // Ignore presses of only modifier keys
+      if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) {
+        return;
+      }
+
+      let newHotkey = e.key;
+
+      // Map Arrow keys
+      if (newHotkey === "ArrowUp") newHotkey = "Up";
+      if (newHotkey === "ArrowDown") newHotkey = "Down";
+      if (newHotkey === "ArrowLeft") newHotkey = "Left";
+      if (newHotkey === "ArrowRight") newHotkey = "Right";
+
+      // Fix Space key
+      if (newHotkey === " ") newHotkey = "Space";
+
+      // Only uppercase single characters, leave special keys (PageDown, F1, etc.) alone
+      if (newHotkey.length === 1) {
+        newHotkey = newHotkey.toUpperCase();
+      }
+
+      // Fix tilde/backtick
+      if (newHotkey === "~") newHotkey = "Shift+`";
+      if (newHotkey === "`") newHotkey = "`";
+
+
+      currentHotkeyEl.textContent = newHotkey;
+      recordStatus.textContent = "Saved!";
+      recordStatus.classList.remove("recording");
+
+      if (window.electronAPI) {
+        window.electronAPI.setHotkey(newHotkey);
+      }
+
+      recording = false;
+    });
+
+    if (window.electronAPI) {
+      window.electronAPI.onHotkeyNext(() => {
+        nextBtn.click();
+      });
+    }
+    if (window.electronAPI) {
+  window.electronAPI.onLoadHotkey((event, savedHotkey) => {
+    currentHotkeyEl.textContent = savedHotkey;
+  });
+}
+
+    /* --- RESIZING LOGIC --- */
+    let isResizing = false;
+    let currentResizer = null;
+    let resizeType = null; // 'col' or 'panel'
+    let startX, startY, startWidth, startHeight;
+    let targetElement = null;
+
+    document.addEventListener('mousedown', (e) => {
+      // Handle Column Resizing
+      if (e.target.classList.contains('splitter-col')) {
+        isResizing = true;
+        currentResizer = e.target;
+        
+        // Activate overlay to capture mouse events over webviews
+        const overlay = document.getElementById('resizeOverlay');
+        overlay.style.display = 'block';
+        overlay.style.cursor = 'col-resize';
+        document.body.classList.add('resizing');
+        
+        resizeType = 'col';
+        startX = e.clientX;
+        
+        // The column to the left of the splitter is the one we resize
+        targetElement = currentResizer.previousElementSibling;
+        startWidth = targetElement.getBoundingClientRect().width;
+        
+        currentResizer.classList.add('active');
+        // Disable transitions during resize for instant feedback
+        document.querySelectorAll('.layout-column').forEach(el => el.style.transition = 'none');
+        e.preventDefault();
+      } 
+      // Handle Panel Resizing
+      else if (e.target.classList.contains('resizer-panel')) {
+        isResizing = true;
+        currentResizer = e.target;
+        
+        const overlay = document.getElementById('resizeOverlay');
+        overlay.style.display = 'block';
+        overlay.style.cursor = 'row-resize';
+        document.body.classList.add('resizing');
+        
+        resizeType = 'panel';
+        startY = e.clientY;
+        
+        // The panel containing the resizer
+        targetElement = currentResizer.parentElement;
+        startHeight = targetElement.getBoundingClientRect().height;
+        
+        currentResizer.classList.add('active');
+        e.preventDefault();
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+
+      if (resizeType === 'col') {
+        const dx = e.clientX - startX;
+        const newWidth = startWidth + dx;
+        if (newWidth > 100) { // Minimum width constraint
+          targetElement.style.width = `${newWidth}px`;
+          targetElement.style.flex = 'none'; // Disable flex to enforce fixed width
+        }
+      } else if (resizeType === 'panel') {
+        const dy = e.clientY - startY;
+        const newHeight = startHeight + dy;
+        if (newHeight > 50) { // Minimum height constraint
+          targetElement.style.height = `${newHeight}px`;
+        }
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        
+        // Hide overlay and restore normal mouse interaction
+        document.getElementById('resizeOverlay').style.display = 'none';
+        document.body.classList.remove('resizing');
+        
+        if (currentResizer) currentResizer.classList.remove('active');
+        document.body.style.cursor = '';
+        
+        // Re-enable transitions
+        document.querySelectorAll('.layout-column').forEach(el => el.style.transition = '');
+        
+        saveLayout(); // Save the new sizes to settings
+      }
+    });
+
+
+    /* --- AUTO SCANNER LOGIC --- */
+    const autoScanToggle = document.getElementById('autoScanToggle');
+    const setScanAreaBtn = document.getElementById('setScanAreaBtn');
+    const setVoidCascadeAreaBtn = document.getElementById('setVoidCascadeAreaBtn');
+    const scanAreaDisplay = document.getElementById('scanAreaDisplay');
+    const scanPauseInput = document.getElementById('scanPauseInput');
+
+    function updateScanAreaDisplay(areas) {
+      // Handle both old format (single area) and new format (object with keys)
+      let normal = areas;
+      let vc = null;
+      
+      if (areas && (areas.normal || areas.voidCascade)) {
+        normal = areas.normal;
+        vc = areas.voidCascade;
+      }
+
+      let text = '';
+      if (normal && normal.width > 0) {
+        text += `Normal: ${normal.width}x${normal.height} at (${normal.x}, ${normal.y})`;
+      } else {
+        text += 'Normal: Not set';
+      }
+      
+      text += ' | ';
+      
+      if (vc && vc.width > 0) {
+        text += `VC: ${vc.width}x${vc.height} at (${vc.x}, ${vc.y})`;
+      } else {
+        text += 'VC: Not set';
+      }
+      
+      scanAreaDisplay.textContent = text;
+    }
+
+    setScanAreaBtn.addEventListener('click', () => {
+      window.electronAPI.openScannerWindow('normal');
+    });
+
+    setVoidCascadeAreaBtn.addEventListener('click', () => {
+      window.electronAPI.openScannerWindow('voidCascade');
+    });
+
+    autoScanToggle.addEventListener('change', () => {
+      window.electronAPI.toggleAutoScan(autoScanToggle.checked);
+    });
+
+    scanPauseInput.addEventListener('change', () => {
+      const val = parseInt(scanPauseInput.value);
+      if (val > 0 && window.electronAPI) window.electronAPI.setAutoScanPause(val);
+    });
+
+    window.electronAPI.onScanAreaUpdated((event, areas) => {
+      updateScanAreaDisplay(areas);
+    });
+
+    window.electronAPI.onMissionCompleteDetected(() => {
+      nextBtn.click();
+    });
+
+    /* --- OSD LOGIC --- */
+    const osdToggle = document.getElementById('osdToggle');
+    const osdOpacityInput = document.getElementById('osdOpacity');
+    const osdScaleInput = document.getElementById('osdScale');
+    
+    osdToggle.addEventListener('change', () => {
+      if (window.electronAPI) window.electronAPI.setOSDEnabled(osdToggle.checked);
+    });
+
+    relicNameInput.addEventListener('input', broadcastOSD);
+
+    function broadcastOSD() {
+      if (window.electronAPI) window.electronAPI.updateOSD({ now: nowEl.textContent, next: nextEl.textContent, relic: relicNameInput.value });
+    }
+
+    osdOpacityInput.addEventListener('input', () => {
+      if (window.electronAPI) window.electronAPI.setOSDOpacity(parseFloat(osdOpacityInput.value));
+    });
+
+    osdScaleInput.addEventListener('input', () => {
+      if (window.electronAPI) window.electronAPI.setOSDScale(parseFloat(osdScaleInput.value));
+    });
+
+    /* --- COLLAPSIBLE SETTINGS LOGIC --- */
+    const settingsCards = document.querySelectorAll('.settings-card');
+    let uiSettings = {};
+
+    settingsCards.forEach(card => {
+      const header = card.querySelector('.settings-header');
+      const content = card.querySelector('.settings-content');
+      const key = card.dataset.settingKey;
+
+      header.addEventListener('click', () => {
+        const isCollapsed = card.classList.toggle('collapsed');
+        content.classList.toggle('collapsed');
+        
+        if (window.electronAPI) {
+          uiSettings[key] = isCollapsed;
+          window.electronAPI.setUISettings({ [key]: isCollapsed });
+        }
+      });
+    });
+
+    function applyUISettings(loadedUISettings) {
+      settingsCards.forEach(card => {
+        const key = card.dataset.settingKey;
+        if (loadedUISettings[key]) {
+          card.classList.add('collapsed');
+          card.querySelector('.settings-content').classList.add('collapsed');
+        }
+      });
+    }
+
+    /* --- GENERAL SETTINGS MODAL LOGIC --- */
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+
+    settingsBtn.addEventListener('click', () => {
+      settingsModal.classList.add('visible');
+    });
+
+    closeSettingsBtn.addEventListener('click', () => {
+      settingsModal.classList.remove('visible');
+    });
+
+    settingsModal.addEventListener('click', (e) => {
+      if (e.target === settingsModal) settingsModal.classList.remove('visible');
+    });
+
+    /* --- HYDRATION REMINDER LOGIC --- */
+    const hydrationToggle = document.getElementById('hydrationToggle');
+    let hydrationInterval = null;
+    let customAudio = null;
+
+    hydrationToggle.addEventListener('change', () => {
+      if (window.electronAPI) {
+        window.electronAPI.setHydrationReminderEnabled(hydrationToggle.checked);
+      }
+      manageHydrationTimer();
+    });
+
+    const selectSoundBtn = document.getElementById('selectSoundBtn');
+    const resetSoundBtn = document.getElementById('resetSoundBtn');
+    const soundNameEl = document.getElementById('soundName');
+    const hydrationVolumeInput = document.getElementById('hydrationVolume');
+
+    selectSoundBtn.addEventListener('click', async () => {
+      if (window.electronAPI) {
+        const path = await window.electronAPI.selectHydrationSound();
+        if (path) {
+          window.electronAPI.setHydrationSound(path);
+          updateSoundUI(path);
+          loadCustomSoundData();
+        }
+      }
+    });
+
+    resetSoundBtn.addEventListener('click', () => {
+      if (window.electronAPI) {
+        window.electronAPI.setHydrationSound(null);
+        updateSoundUI(null);
+        loadCustomSoundData();
+      }
+    });
+
+    function updateSoundUI(path) {
+      if (path) {
+        const fileName = path.split(/[\\/]/).pop();
+        soundNameEl.textContent = fileName;
+        resetSoundBtn.style.display = 'inline-block';
+        selectSoundBtn.textContent = "Change File";
+      } else {
+        soundNameEl.textContent = "Default (QuackReverb)";
+        resetSoundBtn.style.display = 'none';
+        selectSoundBtn.textContent = "Select File";
+      }
+    }
+
+    hydrationVolumeInput.addEventListener('input', () => {
+      const vol = parseFloat(hydrationVolumeInput.value);
+      if (customAudio) customAudio.volume = vol;
+      if (window.electronAPI) window.electronAPI.setHydrationSoundVolume(vol);
+    });
+
+    async function loadCustomSoundData() {
+      if (!window.electronAPI) return;
+      const result = await window.electronAPI.readHydrationSound();
+      if (result) {
+        customAudio = new Audio(`data:${result.mime};base64,${result.data}`);
+        const vol = parseFloat(hydrationVolumeInput.value);
+        customAudio.volume = isNaN(vol) ? 0.5 : vol;
+      } else {
+        customAudio = null;
+      }
+    }
+
+    const testPopupBtn = document.getElementById('testPopupBtn');
+    testPopupBtn.addEventListener('click', () => {
+      showHydrationReminder();
+    });
+
+    function manageHydrationTimer() {
+      if (hydrationInterval) clearInterval(hydrationInterval);
+      if (hydrationToggle.checked) {
+        hydrationInterval = setInterval(showHydrationReminder, 3600000); // 1 hour
+      }
+    }
+
+    function showHydrationReminder() {
+      const popup = document.getElementById('hydrationPopup');
+      popup.classList.add('show');
+      playPleasantNoise();
+      setTimeout(() => {
+        popup.classList.remove('show');
+      }, 20000); // 20 seconds
+    }
+
+    function playPleasantNoise() {
+      if (customAudio) {
+        customAudio.currentTime = 0;
+        customAudio.play().catch(e => console.error("Error playing custom sound:", e));
+        return;
+      }
+    }
+
+    /* --- FISSURE LOGIC --- */
+    const fissureListEl = document.getElementById("fissureList");
+    const refreshFissuresBtn = document.getElementById("refreshFissures");
+    const toggleFiltersBtn = document.getElementById("toggleFilters");
+    const filterMenuEl = document.getElementById("filterMenu");
+    let lastFissuresData = [];
+
+    // State for filters
+    let hiddenMissionTypes = [];
+    let hiddenTiers = [];
+    let showRailjack = false;
+
+    toggleFiltersBtn.addEventListener("click", () => {
+      filterMenuEl.classList.toggle("visible");
+    });
+
+    async function loadSettings() {
+      try {
+        if (window.electronAPI) {
+          const settings = await window.electronAPI.getSettings();
+          hiddenMissionTypes = settings.hiddenMissionTypes || [];
+          hiddenTiers = settings.hiddenTiers || [];
+          showRailjack = settings.showRailjack || false;
+          autoScanToggle.checked = settings.autoScanEnabled || false;
+          
+          // Load Relic Name
+          if (settings.relicName) {
+            relicNameInput.value = settings.relicName;
+          }
+
+          // Load Rotation Mode
+          if (settings.rotationMode) {
+            currentMode = settings.rotationMode;
+            rotationBtns.forEach(b => {
+              if (b.dataset.mode === currentMode) b.classList.add('active');
+              else b.classList.remove('active');
+            });
+          }
+          
+          if (settings.voidCascadeMode) {
+            isCascadeMode = true;
+            cascadeBtn.classList.add('active');
+          } else {
+            isCascadeMode = false;
+            cascadeBtn.classList.remove('active');
+          }
+          
+          hotkeyEnabledToggle.checked = settings.hotkeyEnabled !== false;
+          osdToggle.checked = settings.osdEnabled || false;
+          osdOpacityInput.value = settings.osdOpacity || 1.0;
+          osdScaleInput.value = settings.osdScale || 1.0;
+          scanPauseInput.value = settings.autoScanPause || 30;
+          updateScanAreaDisplay({ normal: settings.scanArea, voidCascade: settings.voidCascadeScanArea });
+          
+          hydrationToggle.checked = settings.hydrationReminderEnabled || false;
+          manageHydrationTimer();
+          hydrationVolumeInput.value = settings.hydrationSoundVolume !== undefined ? settings.hydrationSoundVolume : 0.5;
+          updateSoundUI(settings.hydrationSound);
+          loadCustomSoundData();
+
+          // Load Layout
+          if (settings.layout) {
+            applyLayout(settings.layout);
+          }
+          if (settings.ui && settings.ui.customLayout) {
+            // Custom layout loaded into memory but not applied automatically unless it was the last active one (which is handled by settings.layout)
+          }
+
+          uiSettings = settings.ui || {};
+          
+          if (uiSettings.discordPanelOpen) {
+            discordPanel.style.display = 'block';
+          }
+
+          applyUISettings(uiSettings);
+          updateColumnVisibility();
+        }
+      } catch (e) {
+        console.error("Failed to load settings:", e);
+      }
+      loadFissures();
+    }
+
+    function saveFilters() {
+      if (window.electronAPI) window.electronAPI.setFilters({ hiddenMissionTypes, hiddenTiers, showRailjack });
+      loadFissures(); // Reload list to apply filters
+    }
+
+    function renderFilters(allMissionTypes) {
+      filterMenuEl.innerHTML = "";
+
+      // Railjack Toggle
+      const rjRow = document.createElement("div");
+      rjRow.className = "filter-row";
+      rjRow.innerHTML = `
+        <input type="checkbox" id="filter-rj" ${showRailjack ? "checked" : ""}>
+        <label for="filter-rj" style="color: #facc15;">Show Railjack (Void Storms)</label>
+      `;
+      filterMenuEl.appendChild(rjRow);
+      rjRow.querySelector("input").addEventListener("change", (e) => {
+        showRailjack = e.target.checked;
+        saveFilters();
+      });
+
+      // Separator
+      const sep = document.createElement("div");
+      sep.style.height = "1px";
+      sep.style.background = "#444";
+      sep.style.margin = "0.5rem 0";
+      filterMenuEl.appendChild(sep);
+
+      // Tiers Header
+      const tierHeader = document.createElement("div");
+      tierHeader.className = "group-header";
+      tierHeader.textContent = "Tiers";
+      filterMenuEl.appendChild(tierHeader);
+
+      const tiers = ['Lith', 'Meso', 'Neo', 'Axi', 'Requiem', 'Omnia'];
+      tiers.forEach(tier => {
+        const row = document.createElement("div");
+        row.className = "filter-row";
+        const isHidden = hiddenTiers.includes(tier);
+        row.innerHTML = `<input type="checkbox" id="filter-${tier}" ${!isHidden ? "checked" : ""}><label for="filter-${tier}">${tier}</label>`;
+        filterMenuEl.appendChild(row);
+        row.querySelector("input").addEventListener("change", (e) => {
+          if (e.target.checked) hiddenTiers = hiddenTiers.filter(t => t !== tier);
+          else if (!hiddenTiers.includes(tier)) hiddenTiers.push(tier);
+          saveFilters();
+        });
+      });
+
+      // Mission Types Header
+      const missionHeader = document.createElement("div");
+      missionHeader.className = "group-header";
+      missionHeader.style.marginTop = "0.5rem";
+      missionHeader.textContent = "Missions";
+      filterMenuEl.appendChild(missionHeader);
+
+      // Mission Types
+      allMissionTypes.sort().forEach(type => {
+        const row = document.createElement("div");
+        row.className = "filter-row";
+        const isHidden = hiddenMissionTypes.includes(type);
+        row.innerHTML = `
+          <input type="checkbox" id="filter-${type}" ${!isHidden ? "checked" : ""}>
+          <label for="filter-${type}">${type}</label>
+        `;
+        filterMenuEl.appendChild(row);
+
+        row.querySelector("input").addEventListener("change", (e) => {
+          if (e.target.checked) {
+            hiddenMissionTypes = hiddenMissionTypes.filter(t => t !== type);
+          } else {
+            if (!hiddenMissionTypes.includes(type)) hiddenMissionTypes.push(type);
+          }
+          saveFilters();
+        });
+      });
+    }
+
+    // Clock
+    function updateClock() {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' });
+      document.getElementById('clock').textContent = timeString;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Timer Logic
+    function formatTimeLeft(expiryStr) {
+      const now = new Date();
+      const expiry = new Date(expiryStr);
+      const diff = expiry - now;
+      
+      if (diff <= 0) return "Expired";
+      
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      
+      if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+      return `${minutes}m ${seconds}s`;
+    }
+
+    function updateTimers() {
+      const timers = document.querySelectorAll('.fissure-timer');
+      timers.forEach(el => {
+        const expiry = el.dataset.expiry;
+        if (expiry) el.textContent = formatTimeLeft(expiry);
+      });
+    }
+    setInterval(updateTimers, 1000);
+
+    function renderFissures(fissures) {
+        const now = new Date();
+        const activeFissures = fissures.filter(f => new Date(f.expiry) > now);
+        
+        // Collect all mission types from active fissures for the filter menu
+        const allTypes = [...new Set(activeFissures.map(f => f.missionType).filter(Boolean))];
+        
+        // Only re-render filters if the types have changed to avoid resetting scroll/focus while menu is open
+        const currentRenderedTypes = Array.from(filterMenuEl.querySelectorAll('label')).map(l => l.textContent).filter(t => t !== "Show Railjack (Void Storms)");
+        const typesChanged = allTypes.length !== currentRenderedTypes.length || !allTypes.every(t => currentRenderedTypes.includes(t));
+        
+        if (typesChanged) {
+             renderFilters(allTypes);
+        }
+
+        // Filter logic
+        const displayFissures = activeFissures.filter(f => {
+          if (!f.tier) return false; // Basic validity check
+          if (f.isStorm && !showRailjack) return false; // Railjack filter (default hidden)
+          if (hiddenMissionTypes.includes(f.missionType)) return false; // User hidden types
+          if (hiddenTiers.includes(f.tier)) return false; // User hidden tiers
+          return true;
+        });
+        
+        // Sort by Tier number (1=Lith, etc)
+        displayFissures.sort((a, b) => a.tierNum - b.tierNum);
+
+        fissureListEl.innerHTML = "";
+        
+        if (displayFissures.length === 0) {
+          fissureListEl.innerHTML = '<div style="text-align:center; color:#666;">No active fissures found.</div>';
+          return;
+        }
+
+        // Group by Tier
+        const grouped = {};
+        displayFissures.forEach(f => {
+          if (!grouped[f.tier]) grouped[f.tier] = [];
+          grouped[f.tier].push(f);
+        });
+
+        // Define order to ensure consistent display
+        const tierOrder = ['Lith', 'Meso', 'Neo', 'Axi', 'Requiem', 'Omnia'];
+
+        // Render groups
+        for (const tier of tierOrder) {
+          if (grouped[tier]) {
+            const groupDiv = document.createElement("div");
+            groupDiv.className = "fissure-group";
+
+            const header = document.createElement("div");
+            header.className = "group-header";
+            header.textContent = tier;
+            groupDiv.appendChild(header);
+
+            grouped[tier].forEach(f => {
+              const item = document.createElement("div");
+              item.className = `fissure-item ${f.tier}`;
+              
+              const spIcon = f.isHard ? `<svg class="sp-icon" viewBox="0 0 24 24" title="Steel Path"><path d="M12,2 L2,12 L12,22 L22,12 L12,2 Z M12,6 L18,12 L12,18 L6,12 L12,6 Z"/></svg>` : '';
+
+              item.innerHTML = `
+                <div class="fissure-info">
+                  <span class="fissure-main">${f.missionType}${spIcon}</span>
+                  <span class="fissure-sub">${f.node} • ${f.enemy}</span>
+                </div>
+                <div class="fissure-timer" data-expiry="${f.expiry}">${formatTimeLeft(f.expiry)}</div>
+              `;
+              groupDiv.appendChild(item);
+            });
+            fissureListEl.appendChild(groupDiv);
+          }
+        }
+    }
+
+    async function loadFissures() {
+      if (!window.electronAPI) return;
+      
+      const btn = refreshFissuresBtn;
+      const originalText = btn.textContent;
+      btn.textContent = "...";
+      btn.disabled = true;
+      
+      try {
+        const fissures = await window.electronAPI.getFissures();
+        if (!Array.isArray(fissures)) throw new Error("Invalid data received");
+        
+        lastFissuresData = fissures;
+        renderFissures(fissures);
+      } catch (err) {
+        console.error(err);
+        if (lastFissuresData.length > 0) renderFissures(lastFissuresData);
+        else fissureListEl.innerHTML = '<div style="text-align:center; color:#f87171;">Error loading data.</div>';
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    refreshFissuresBtn.addEventListener("click", loadFissures);
+    // Auto refresh every minute
+    setInterval(loadFissures, 60000);
+
+    /* --- LAYOUT & DRAG-DROP LOGIC --- */
+    const editLayoutToggle = document.getElementById('editLayoutToggle');
+    const layoutColumns = document.querySelectorAll('.layout-column');
+    const draggablePanels = document.querySelectorAll('.draggable-panel');
+    const presetDefaultBtn = document.getElementById('presetDefaultBtn');
+    const presetCompactBtn = document.getElementById('presetCompactBtn');
+    const presetWideBtn = document.getElementById('presetWideBtn');
+    const saveCustomLayoutBtn = document.getElementById('saveCustomLayoutBtn');
+    const loadCustomLayoutBtn = document.getElementById('loadCustomLayoutBtn');
+    const layoutContainer = document.getElementById('layoutContainer');
+
+    let isEditingLayout = false;
+
+    editLayoutToggle.addEventListener('change', () => {
+      isEditingLayout = editLayoutToggle.checked;
+      toggleEditMode(isEditingLayout);
+      updateColumnVisibility();
+    });
+
+    function toggleEditMode(enabled) {
+      layoutColumns.forEach(col => {
+        if (enabled) col.classList.add('editing');
+        else col.classList.remove('editing');
+      });
+      draggablePanels.forEach(panel => {
+        panel.draggable = enabled;
+      });
+    }
+
+    // Drag Events
+    draggablePanels.forEach(panel => {
+      panel.addEventListener('dragstart', () => {
+        panel.classList.add('dragging');
+      });
+      panel.addEventListener('dragend', () => {
+        panel.classList.remove('dragging');
+        saveLayout();
+        updateColumnVisibility();
+      });
+    });
+
+    layoutColumns.forEach(col => {
+      col.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(col, e.clientY);
+        const draggable = document.querySelector('.dragging');
+        if (afterElement == null) {
+          col.appendChild(draggable);
+        } else {
+          col.insertBefore(draggable, afterElement);
+        }
+      });
+    });
+
+    function getDragAfterElement(container, y) {
+      const draggableElements = [...container.querySelectorAll('.draggable-panel:not(.dragging)')];
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    function getColumnData(colId) {
+      const col = document.getElementById(colId);
+      const panels = Array.from(col.children).map(child => ({
+        id: child.id,
+        height: child.style.height || null
+      }));
+      return {
+        width: col.style.width || null,
+        panels: panels
+      };
+    }
+
+    function saveLayout() {
+      const layout = {
+        col1: getColumnData('col-1'),
+        col2: getColumnData('col-2'),
+        col3: getColumnData('col-3')
+      };
+      if (window.electronAPI) window.electronAPI.setLayout(layout);
+      return layout;
+    }
+
+    function applyLayout(layout) {
+      if (!layout) return;
+      
+      const applyCol = (colId, colData) => {
+        const col = document.getElementById(colId);
+        let panelIds = [];
+        let width = null;
+
+        // Handle old format (array of IDs) vs new format (object with width/panels)
+        if (Array.isArray(colData)) {
+          panelIds = colData;
+        } else if (colData && typeof colData === 'object') {
+          panelIds = colData.panels.map(p => typeof p === 'string' ? p : p.id);
+          width = colData.width;
+          // Apply heights
+          colData.panels.forEach(p => {
+            if (typeof p === 'object' && p.height) {
+              const panel = document.getElementById(p.id);
+              if (panel) panel.style.height = p.height;
+            }
+          });
+        }
+
+        if (width) {
+          col.style.width = width;
+          col.style.flex = "none";
+        } else {
+          col.style.width = "";
+          col.style.flex = ""; // Reset to CSS default
+        }
+
+        panelIds.forEach(id => {
+          const panel = document.getElementById(id);
+          if (panel) col.appendChild(panel);
+        });
+      };
+
+      applyCol('col-1', layout.col1);
+      applyCol('col-2', layout.col2);
+      applyCol('col-3', layout.col3);
+      updateColumnVisibility();
+    }
+
+    // Presets
+    const presets = {
+      default: {
+        col1: { width: null, panels: [{id: 'panel-discord', height: '500px'}] },
+        col2: { width: null, panels: [{id: 'panel-runner', height: null}, {id: 'panel-hotkey', height: null}, {id: 'panel-scanner', height: null}, {id: 'panel-osd', height: null}] },
+        col3: { width: null, panels: [{id: 'panel-fissures', height: '100%'}] }
+      },
+      compact: {
+        col1: { width: null, panels: [{id: 'panel-runner', height: null}, {id: 'panel-fissures', height: '400px'}, {id: 'panel-hotkey', height: null}, {id: 'panel-scanner', height: null}, {id: 'panel-osd', height: null}, {id: 'panel-discord', height: '400px'}] },
+        col2: { width: null, panels: [] },
+        col3: { width: null, panels: [] }
+      },
+      wide: {
+        col1: { width: null, panels: [{id: 'panel-runner', height: null}, {id: 'panel-hotkey', height: null}, {id: 'panel-scanner', height: null}, {id: 'panel-osd', height: null}] },
+        col2: { width: null, panels: [{id: 'panel-fissures', height: '100%'}, {id: 'panel-discord', height: '400px'}] },
+        col3: { width: null, panels: [] }
+      }
+    };
+
+    presetDefaultBtn.addEventListener('click', () => { applyLayout(presets.default); saveLayout(); });
+    presetCompactBtn.addEventListener('click', () => { applyLayout(presets.compact); saveLayout(); });
+    presetWideBtn.addEventListener('click', () => { applyLayout(presets.wide); saveLayout(); });
+
+    saveCustomLayoutBtn.addEventListener('click', () => {
+      const layout = saveLayout(); // Saves to current active layout
+      if (window.electronAPI) {
+        // Also save to custom slot
+        window.electronAPI.setUISettings({ customLayout: layout });
+        alert("Layout saved as Custom Preset!");
+      }
+    });
+
+    loadCustomLayoutBtn.addEventListener('click', () => {
+      if (uiSettings && uiSettings.customLayout) {
+        applyLayout(uiSettings.customLayout);
+        saveLayout();
+      } else {
+        alert("No custom preset saved.");
+      }
+    });
+
+    function updateColumnVisibility() {
+      if (isEditingLayout) {
+        document.querySelectorAll('.layout-column').forEach(c => c.style.display = 'flex');
+        document.querySelectorAll('.splitter-col').forEach(s => s.style.display = 'block');
+        return;
+      }
+
+      const hasVisiblePanels = (colId) => {
+        const col = document.getElementById(colId);
+        if (!col) return false;
+        const panels = col.querySelectorAll('.draggable-panel');
+        for (let p of panels) {
+          if (p.style.display !== 'none') return true;
+        }
+        return false;
+      };
+
+      const col1Visible = hasVisiblePanels('col-1');
+      const col2Visible = hasVisiblePanels('col-2');
+      const col3Visible = hasVisiblePanels('col-3');
+
+      document.getElementById('col-1').style.display = col1Visible ? 'flex' : 'none';
+      document.getElementById('col-2').style.display = col2Visible ? 'flex' : 'none';
+      document.getElementById('col-3').style.display = col3Visible ? 'flex' : 'none';
+
+      // Show splitters only if the columns on both sides (conceptually) are visible
+      document.getElementById('split-1').style.display = (col1Visible && (col2Visible || col3Visible)) ? 'block' : 'none';
+      document.getElementById('split-2').style.display = (col2Visible && col3Visible) ? 'block' : 'none';
+    }
+
+    /* --- UPDATE CHECK LOGIC --- */
+    const checkForUpdateBtn = document.getElementById('checkForUpdateBtn');
+    const updateStatusEl = document.getElementById('updateStatus');
+
+    checkForUpdateBtn.addEventListener('click', () => {
+      if (window.electronAPI) window.electronAPI.checkForUpdate();
+    });
+
+    if (window.electronAPI) {
+      window.electronAPI.onUpdateStatus((event, message) => {
+        updateStatusEl.textContent = message;
+      });
+    }
+
+    // Load on startup (moved to end to ensure all variables are defined)
+    loadSettings();
+
+  </script>
+</body>
+</html>

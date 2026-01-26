@@ -1,0 +1,20 @@
+{
+  "appId": "com.fissurerunner.app",
+  "productName": "Fissure Runner",
+  "directories": {
+    "output": "dist-installer"
+  },
+  "win": {
+    "target": "nsis"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true
+  },
+  "files": [
+    "**/*",
+    "!dist/**",
+    "!dist-installer/**"
+  ]
+}

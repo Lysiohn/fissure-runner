@@ -405,7 +405,8 @@ function startAutoScanner() {
   stopAutoScanner();
   const currentArea = settings.voidCascadeMode ? settings.voidCascadeScanArea : settings.scanArea;
   if (currentArea) {
-    autoScanInterval = setInterval(scanScreen, 10000);
+    const interval = settings.voidCascadeMode ? 5000 : 10000;
+    autoScanInterval = setInterval(scanScreen, interval);
   }
 }
 

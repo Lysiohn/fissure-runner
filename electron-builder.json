@@ -10,8 +10,17 @@
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
-    "createDesktopShortcut": true
+    "createDesktopShortcut": true,
+    "installerIcon": "icon.ico",
+    "uninstallerIcon": "icon.ico"
   },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "Lysiohn",
+      "repo": "fissure-runner"
+    }
+  ],
   "files": [
     "**/*",
     "!dist/**",

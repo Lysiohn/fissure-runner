@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openScannerWindow: (type) => ipcRenderer.send('open-scanner-window', type),
   onScanAreaUpdated: (callback) => ipcRenderer.on('scan-area-updated', callback),
   onMissionCompleteDetected: (callback) => ipcRenderer.on('mission-complete-detected', callback),
+  onScannerStatusUpdate: (callback) => ipcRenderer.on('scanner-status-update', callback),
   toggleAutoScan: (enabled) => ipcRenderer.send('toggle-auto-scan', enabled),
   setAutoScanPause: (seconds) => ipcRenderer.send('set-auto-scan-pause', seconds),
   setScanInterval: (type, seconds) => ipcRenderer.send('set-scan-interval', { type, seconds }),
@@ -36,6 +37,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback),
   downloadUpdate: () => ipcRenderer.send('download-update'),
   quitAndInstall: () => ipcRenderer.send('quit-and-install'),
+  onResyncScannerState: (callback) => ipcRenderer.on('resync-scanner-state', callback),
   testScanner: () => ipcRenderer.invoke('test-scanner'),
   setVoidCascadeMode: (enabled) => ipcRenderer.send('set-void-cascade-mode', enabled),
   setHotkeyEnabled: (enabled) => ipcRenderer.send('set-hotkey-enabled', enabled)

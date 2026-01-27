@@ -326,6 +326,31 @@
       color: #f87171 !important;
     }
 
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #3f3f46; /* Default/disabled color */
+      transition: background-color 0.3s;
+      flex-shrink: 0;
+    }
+    .status-dot.idle {
+      background-color: #a1a1aa; /* Grey for enabled but not running */
+    }
+    .status-dot.active {
+      background-color: #10b981; /* Green for active */
+      animation: pulse 2s infinite;
+    }
+    .status-dot.paused {
+      background-color: #f59e0b; /* Yellow/Orange for paused */
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+      70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
     /* --- AUTO SCANNER CSS --- */
     .settings-card[data-setting-key="autoScannerSettingsCollapsed"] .settings-header h3::before {
         content: '';
@@ -770,7 +795,11 @@
         <div id="autoScannerSettings" class="settings-content">
           <div class="settings-inner">
             <div class="scanner-row">
-              <label for="autoScanToggle" style="cursor: pointer;">Enable Auto-Scanner</label>
+              <label for="autoScanToggle" style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <span id="scannerStatusDot" class="status-dot"></span>
+                Enable Auto-Scanner
+                <span id="scannerCountdown" style="font-size: 0.8rem; color: #f59e0b; font-weight: 600;"></span>
+              </label>
               <input type="checkbox" id="autoScanToggle" style="cursor: pointer;" />
             </div>
             <div class="scanner-row">
@@ -1027,10 +1056,15 @@
       }
     });
 
+    let relicDebounceTimer;
     relicNameInput.addEventListener("input", () => {
-      if (window.electronAPI && window.electronAPI.setRelicName) {
-        window.electronAPI.setRelicName(relicNameInput.value);
-      }
+      clearTimeout(relicDebounceTimer);
+      relicDebounceTimer = setTimeout(() => {
+        if (window.electronAPI && window.electronAPI.setRelicName) {
+          window.electronAPI.setRelicName(relicNameInput.value);
+        }
+        broadcastOSD();
+      }, 300);
     });
 
     startBtn.addEventListener("click", () => {
@@ -1192,6 +1226,7 @@
     /* --- AUTO SCANNER LOGIC --- */
     const autoScanToggle = document.getElementById('autoScanToggle');
     const setScanAreaBtn = document.getElementById('setScanAreaBtn');
+    const scannerStatusDot = document.getElementById('scannerStatusDot');
     const setVoidCascadeAreaBtn = document.getElementById('setVoidCascadeAreaBtn');
     const scanAreaDisplay = document.getElementById('scanAreaDisplay');
     const scanPauseInput = document.getElementById('scanPauseInput');
@@ -1275,6 +1310,7 @@
 
     autoScanToggle.addEventListener('change', () => {
       window.electronAPI.toggleAutoScan(autoScanToggle.checked);
+      broadcastOSD();
     });
 
     scanPauseInput.addEventListener('change', () => {
@@ -1296,9 +1332,42 @@
       updateScanAreaDisplay(areas);
     });
 
-    window.electronAPI.onMissionCompleteDetected(() => {
+    let countdownInterval;
+    window.electronAPI.onMissionCompleteDetected((event, duration) => {
       nextBtn.click();
+      
+      // Start Countdown UI
+      const countdownEl = document.getElementById('scannerCountdown');
+      let timeLeft = duration || 30;
+      
+      if (countdownInterval) clearInterval(countdownInterval);
+      countdownEl.textContent = `(Resuming in ${timeLeft}s)`;
+      
+      countdownInterval = setInterval(() => {
+        timeLeft--;
+        if (timeLeft <= 0) {
+          clearInterval(countdownInterval);
+          countdownEl.textContent = "";
+        } else {
+          countdownEl.textContent = `(Resuming in ${timeLeft}s)`;
+        }
+      }, 1000);
     });
+
+    if (window.electronAPI) {
+      window.electronAPI.onResyncScannerState(() => {
+        broadcastOSD();
+      });
+    }
+
+    if (window.electronAPI) {
+      window.electronAPI.onScannerStatusUpdate((event, status) => {
+        scannerStatusDot.className = 'status-dot'; // Reset classes
+        if (status) {
+          scannerStatusDot.classList.add(status); // Add new status class (e.g., 'active')
+        }
+      });
+    }
 
     /* --- OSD LOGIC --- */
     const osdToggle = document.getElementById('osdToggle');
@@ -1311,7 +1380,7 @@
       if (window.electronAPI) window.electronAPI.setOSDEnabled(osdToggle.checked);
     });
 
-    relicNameInput.addEventListener('input', broadcastOSD);
+    // relicNameInput listener moved to debounce logic above
 
     function broadcastOSD() {
       if (window.electronAPI) window.electronAPI.updateOSD({ 

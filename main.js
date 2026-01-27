@@ -10,10 +10,24 @@ let scannerWin;
 let autoScanInterval = null;
 let pendingScanType = 'normal';
 let isScanning = false;
+let isScannerPaused = false;
 let worker = null;
 
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
 let settings;
+
+let settingsSaveTimeout;
+function saveSettings() {
+  if (settingsSaveTimeout) clearTimeout(settingsSaveTimeout);
+  settingsSaveTimeout = setTimeout(() => {
+    try {
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+      console.log("Settings saved via debounce.");
+    } catch (e) {
+      console.error("Failed to save settings:", e);
+    }
+  }, 1000);
+}
 
 try {
   settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
@@ -88,7 +102,10 @@ function createWindow() {
   });
 
   win.loadFile("index.html");
-  win.webContents.on("did-finish-load", () => { win.webContents.send("load-hotkey", settings.hotkey); });
+  win.webContents.on("did-finish-load", () => {
+    win.webContents.send("load-hotkey", settings.hotkey);
+    broadcastScannerStatus();
+  });
 
   win.on('closed', () => {
     win = null;
@@ -101,23 +118,16 @@ function createWindow() {
   win.on('moved', saveWindowBounds);
 }
 
-let saveBoundsTimeout;
 function saveWindowBounds() {
-  if (saveBoundsTimeout) clearTimeout(saveBoundsTimeout);
-  saveBoundsTimeout = setTimeout(() => {
-    if (win) {
-      settings.windowBounds = win.getBounds();
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-    }
-  }, 1000);
+  if (win) {
+    settings.windowBounds = win.getBounds();
+    saveSettings();
+  }
 }
 
 app.whenReady().then(() => {
   createWindow();
   registerHotkey();
-  if (settings.autoScanEnabled && settings.scanArea) {
-    startAutoScanner();
-  }
   if (settings.osdEnabled) {
     createOSDWindow();
   }
@@ -152,44 +162,44 @@ app.whenReady().then(() => {
 
 ipcMain.on("set-hotkey", (event, newHotkey) => {
   settings.hotkey = newHotkey;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
   registerHotkey();
 });
 
 ipcMain.on("set-hotkey-enabled", (event, enabled) => {
   settings.hotkeyEnabled = enabled;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
   registerHotkey();
 });
 
 ipcMain.on("set-relic-name", (event, name) => {
   settings.relicName = name;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
 });
 
 ipcMain.on("set-rotation-mode", (event, mode) => {
   settings.rotationMode = mode;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
 });
 
 ipcMain.on("set-1b1-position", (event, pos) => {
   settings.oneByOnePosition = pos;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
 });
 
 ipcMain.on("set-layout", (event, layout) => {
   settings.layout = layout;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
 });
 
 ipcMain.on("set-hydration-reminder-enabled", (event, enabled) => {
   settings.hydrationReminderEnabled = enabled;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
 });
 
 ipcMain.on('set-hydration-interval', (event, minutes) => {
   settings.hydrationIntervalMinutes = minutes;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
 });
 
 ipcMain.handle('select-hydration-sound', async () => {
@@ -205,12 +215,12 @@ ipcMain.handle('select-hydration-sound', async () => {
 
 ipcMain.on('set-hydration-sound', (event, path) => {
   settings.hydrationSound = path;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
 });
 
 ipcMain.on('set-hydration-sound-volume', (event, volume) => {
   settings.hydrationSoundVolume = volume;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
 });
 
 ipcMain.handle('read-hydration-sound', async () => {
@@ -237,12 +247,12 @@ ipcMain.on("set-filters", (event, data) => {
   settings.hiddenTiers = data.hiddenTiers;
   settings.hiddenResetTiers = data.hiddenResetTiers;
   settings.showRailjack = data.showRailjack;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
 });
 
 ipcMain.on('set-ui-settings', (event, uiSettings) => {
   settings.ui = { ...settings.ui, ...uiSettings };
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
 });
 
 ipcMain.on('open-scanner-window', (event, type) => {
@@ -276,7 +286,7 @@ ipcMain.on('set-scan-area', (event, area) => {
   } else {
     settings.scanArea = area;
   }
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
   if (scannerWin) {
     scannerWin.close();
   }
@@ -291,23 +301,23 @@ ipcMain.on('set-scan-area', (event, area) => {
 
 ipcMain.on('toggle-auto-scan', (event, enabled) => {
   settings.autoScanEnabled = enabled;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-  if (enabled) {
-    startAutoScanner();
-  } else {
+  saveSettings();
+  if (!enabled) {
     stopAutoScanner();
+    isScannerPaused = false;
   }
+  broadcastScannerStatus();
 });
 
 ipcMain.on('set-auto-scan-pause', (event, seconds) => {
   settings.autoScanPause = seconds;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
 });
 
 ipcMain.on('set-scan-interval', (event, { type, seconds }) => {
   if (type === 'normal') settings.scanIntervalNormal = seconds;
   if (type === 'cascade') settings.scanIntervalCascade = seconds;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
   // Restart scanner if active to apply new interval
   if (settings.autoScanEnabled) {
     startAutoScanner();
@@ -316,7 +326,7 @@ ipcMain.on('set-scan-interval', (event, { type, seconds }) => {
 
 ipcMain.on('set-void-cascade-mode', (event, enabled) => {
   settings.voidCascadeMode = enabled;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
   if (settings.autoScanEnabled) {
     startAutoScanner();
   }
@@ -324,7 +334,7 @@ ipcMain.on('set-void-cascade-mode', (event, enabled) => {
 
 ipcMain.on('set-osd-enabled', (event, enabled) => {
   settings.osdEnabled = enabled;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
   if (enabled) {
     createOSDWindow();
   } else {
@@ -334,7 +344,7 @@ ipcMain.on('set-osd-enabled', (event, enabled) => {
 
 ipcMain.on('set-osd-opacity', (event, opacity) => {
   settings.osdOpacity = opacity;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
   if (osdWin) {
     osdWin.webContents.send('update-osd-style', { opacity: settings.osdOpacity });
   }
@@ -342,7 +352,7 @@ ipcMain.on('set-osd-opacity', (event, opacity) => {
 
 ipcMain.on('set-osd-scale', (event, scale) => {
   settings.osdScale = scale;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
   if (osdWin) {
     const { x, y } = osdWin.getBounds();
     osdWin.webContents.setZoomFactor(scale);
@@ -353,7 +363,7 @@ ipcMain.on('set-osd-scale', (event, scale) => {
 
 ipcMain.on('set-osd-locked', (event, locked) => {
   settings.osdLocked = locked;
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  saveSettings();
   if (osdWin && !osdWin.isDestroyed()) {
     osdWin.setIgnoreMouseEvents(locked);
   }
@@ -373,6 +383,19 @@ ipcMain.on('update-osd', (event, data) => {
       }
     } else {
       if (!osdWin.isVisible()) osdWin.showInactive();
+    }
+  }
+
+  // Control auto-scanner based on runner state
+  if (settings.autoScanEnabled) {
+    if (isScannerPaused) {
+      return; // Do nothing if in a forced pause
+    }
+    const isRunning = data.now && data.now !== '—' && data.now.trim() !== '';
+    if (isRunning) {
+      if (!autoScanInterval) startAutoScanner();
+    } else {
+      stopAutoScanner();
     }
   }
 });
@@ -427,16 +450,32 @@ function createOSDWindow() {
   osdWin.on('moved', () => {
     const [x, y] = osdWin.getPosition();
     settings.osdPosition = { x, y };
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+    saveSettings();
   });
   osdWin.on('closed', () => {
     osdWin = null;
   });
 }
 
+function broadcastScannerStatus() {
+  if (!win) return;
+  let status = 'disabled';
+  if (settings.autoScanEnabled) {
+    if (isScannerPaused) {
+      status = 'paused';
+    } else if (autoScanInterval) {
+      status = 'active';
+    } else {
+      status = 'idle';
+    }
+  }
+  win.webContents.send('scanner-status-update', status);
+}
+
 function stopAutoScanner() {
   if (autoScanInterval) clearInterval(autoScanInterval);
   autoScanInterval = null;
+  broadcastScannerStatus();
 }
 
 async function getScreenCapture(area) {
@@ -505,10 +544,16 @@ async function scanScreen() {
 
     if (detected) {      
       stopAutoScanner();
+      isScannerPaused = true;
+      broadcastScannerStatus();
       console.log(`Target detected. Pausing scanner for ${settings.autoScanPause} seconds.`);
-      win.webContents.send('mission-complete-detected');      
+      win.webContents.send('mission-complete-detected', settings.autoScanPause);
       setTimeout(() => {
-        if (settings.autoScanEnabled) startAutoScanner();
+        isScannerPaused = false;
+        console.log('Scanner pause finished. Will resume if a run is active.');
+        broadcastScannerStatus();
+        // Trigger a check to see if we should start scanning now
+        if (win) win.webContents.send('resync-scanner-state');
       }, settings.autoScanPause * 1000);
     }
   } catch (error) {
@@ -569,6 +614,7 @@ function startAutoScanner() {
       ? (settings.scanIntervalCascade * 1000) 
       : (settings.scanIntervalNormal * 1000);
     autoScanInterval = setInterval(scanScreen, interval);
+    broadcastScannerStatus();
   }
 }
 

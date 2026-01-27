@@ -1,6 +1,6 @@
 {
   "name": "fissure-runner",
-  "version": "1.5.2",
+  "version": "1.5.4",
   "description": "Warframe Fissure Runner",
   "main": "main.js",
   "scripts": {
@@ -17,6 +17,7 @@
       "target": "nsis",
       "icon": "icon.ico"
     },
+    
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,

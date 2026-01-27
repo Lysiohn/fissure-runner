@@ -28,6 +28,7 @@ try {
 // Ensure defaults exist
 if (!settings.hiddenMissionTypes) settings.hiddenMissionTypes = [];
 if (!settings.hiddenTiers) settings.hiddenTiers = [];
+if (!settings.hiddenResetTiers) settings.hiddenResetTiers = [];
 if (typeof settings.showRailjack === 'undefined') settings.showRailjack = false;
 if (!settings.scanArea) settings.scanArea = null;
 if (!settings.voidCascadeScanArea) settings.voidCascadeScanArea = null;
@@ -228,6 +229,7 @@ ipcMain.handle("get-settings", () => settings);
 ipcMain.on("set-filters", (event, data) => {
   settings.hiddenMissionTypes = data.hiddenMissionTypes;
   settings.hiddenTiers = data.hiddenTiers;
+  settings.hiddenResetTiers = data.hiddenResetTiers;
   settings.showRailjack = data.showRailjack;
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 });
@@ -354,6 +356,18 @@ ipcMain.on('set-osd-locked', (event, locked) => {
 ipcMain.on('update-osd', (event, data) => {
   if (osdWin && !osdWin.isDestroyed()) {
     osdWin.webContents.send('update-osd-data', data);
+
+    const hideWhenEmpty = settings.ui && settings.ui.hideOSDWhenEmpty;
+    if (hideWhenEmpty) {
+      const isEmpty = !data.now || data.now === '—' || data.now.trim() === '';
+      if (isEmpty) {
+        if (osdWin.isVisible()) osdWin.hide();
+      } else {
+        if (!osdWin.isVisible()) osdWin.showInactive();
+      }
+    } else {
+      if (!osdWin.isVisible()) osdWin.showInactive();
+    }
   }
 });
 
@@ -386,6 +400,7 @@ function createOSDWindow() {
     skipTaskbar: true,
     resizable: false,
     focusable: false,
+    show: !(settings.ui && settings.ui.hideOSDWhenEmpty),
     webPreferences: {
       preload: path.join(__dirname, 'osd_preload.js')
     }
@@ -553,7 +568,7 @@ function startAutoScanner() {
 
 ipcMain.handle("get-fissures", async () => {
   try {
-    const response = await fetch("https://api.warframestat.us/pc/fissures", {
+    const response = await fetch(`https://api.warframestat.us/pc/fissures?t=${Date.now()}`, {
       headers: { "User-Agent": "FissureRunner" }
     });
     if (!response.ok) throw new Error("Network response was not ok");

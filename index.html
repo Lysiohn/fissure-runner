@@ -432,40 +432,66 @@
       border-radius: 4px;
     }
 
+    .reset-timers-container {
+      display: flex;
+      flex-direction: column;
+      padding: 0.5rem 1rem;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      gap: 4px;
+    }
+    .reset-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #a1a1aa;
+      align-items: center;
+    }
+    .reset-tier { font-weight: 600; color: #e4e4e7; width: 60px; }
+    .reset-val { display: flex; gap: 6px; }
+
     /* Filter Menu */
     .filter-menu {
       background: #18181b;
       border-bottom: 1px solid #27272a;
-      padding: 0.5rem;
+      padding: 1rem;
       display: none;
       flex-direction: column;
-      gap: 0.25rem;
+      gap: 1rem;
       max-height: 400px;
       overflow-y: auto;
     }
     .filter-menu.visible {
       display: flex;
     }
-    .filter-row {
+    .filter-section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #71717a;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid #27272a;
+      padding-bottom: 0.25rem;
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 0.5rem;
+    }
+    .filter-option {
       display: flex;
       align-items: center;
       gap: 0.5rem;
       font-size: 0.8rem;
       color: #d4d4d8;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-    }
-    .filter-row:hover {
-        background: #27272a;
-    }
-    .filter-row label {
       cursor: pointer;
       user-select: none;
-      flex: 1;
     }
-    .filter-row input[type="checkbox"] {
+    .filter-option input[type="checkbox"] {
       accent-color: #6366f1;
       cursor: pointer;
+      margin: 0;
     }
 
     .fissure-item {
@@ -793,6 +819,10 @@
               <label for="osdLockToggle" style="cursor: pointer;">Lock Position (Click-through)</label>
               <input type="checkbox" id="osdLockToggle" style="cursor: pointer;" />
             </div>
+            <div class="scanner-row" style="margin-top: 0.5rem;">
+              <label for="hideOSDWhenEmptyToggle" style="cursor: pointer;">Hide when "Now Running" is empty</label>
+              <input type="checkbox" id="hideOSDWhenEmptyToggle" style="cursor: pointer;" />
+            </div>
           </div>
         </div>
       </div>
@@ -814,6 +844,7 @@
       <div id="filterMenu" class="filter-menu">
         <!-- Filters injected here -->
       </div>
+      <div id="resetTimers" class="reset-timers-container" style="display:none;"></div>
       <div id="fissureList" class="fissure-list">
         <div style="text-align:center; color:#666; margin-top:2rem;">Loading...</div>
       </div>
@@ -1230,6 +1261,7 @@
     const osdOpacityInput = document.getElementById('osdOpacity');
     const osdScaleInput = document.getElementById('osdScale');
     const osdLockToggle = document.getElementById('osdLockToggle');
+    const hideOSDWhenEmptyToggle = document.getElementById('hideOSDWhenEmptyToggle');
     
     osdToggle.addEventListener('change', () => {
       if (window.electronAPI) window.electronAPI.setOSDEnabled(osdToggle.checked);
@@ -1257,6 +1289,13 @@
 
     osdLockToggle.addEventListener('change', () => {
       if (window.electronAPI) window.electronAPI.setOSDLocked(osdLockToggle.checked);
+    });
+
+    hideOSDWhenEmptyToggle.addEventListener('change', () => {
+      if (window.electronAPI) {
+        window.electronAPI.setUISettings({ hideOSDWhenEmpty: hideOSDWhenEmptyToggle.checked });
+        broadcastOSD();
+      }
     });
 
     /* --- COLLAPSIBLE SETTINGS LOGIC --- */
@@ -1501,11 +1540,17 @@
     const refreshFissuresBtn = document.getElementById("refreshFissures");
     const toggleFiltersBtn = document.getElementById("toggleFilters");
     const filterMenuEl = document.getElementById("filterMenu");
+    const resetTimersEl = document.getElementById("resetTimers");
     let lastFissuresData = [];
+    let lastRenderedMissionTypes = [];
+    let retryTimeout = null;
+    let isFetchingFissures = false;
+    let lastFetchTime = 0;
 
     // State for filters
     let hiddenMissionTypes = [];
     let hiddenTiers = [];
+    let hiddenResetTiers = [];
     let showRailjack = false;
 
     toggleFiltersBtn.addEventListener("click", () => {
@@ -1518,6 +1563,7 @@
           const settings = await window.electronAPI.getSettings();
           hiddenMissionTypes = settings.hiddenMissionTypes || [];
           hiddenTiers = settings.hiddenTiers || [];
+          hiddenResetTiers = settings.hiddenResetTiers || [];
           showRailjack = settings.showRailjack || false;
           autoScanToggle.checked = settings.autoScanEnabled || false;
           
@@ -1551,6 +1597,7 @@
           osdOpacityInput.value = settings.osdOpacity || 1.0;
           osdScaleInput.value = settings.osdScale || 1.0;
           osdLockToggle.checked = settings.osdLocked || false;
+          hideOSDWhenEmptyToggle.checked = (settings.ui && settings.ui.hideOSDWhenEmpty) || false;
           scanPauseInput.value = settings.autoScanPause || 30;
           updateScanAreaDisplay({ normal: settings.scanArea, voidCascade: settings.voidCascadeScanArea });
           
@@ -1581,6 +1628,7 @@
 
           applyUISettings(uiSettings);
           updateColumnVisibility();
+          broadcastOSD();
         }
       } catch (e) {
         console.error("Failed to load settings:", e);
@@ -1589,72 +1637,96 @@
     }
 
     function saveFilters() {
-      if (window.electronAPI) window.electronAPI.setFilters({ hiddenMissionTypes, hiddenTiers, showRailjack });
+      if (window.electronAPI) window.electronAPI.setFilters({ hiddenMissionTypes, hiddenTiers, hiddenResetTiers, showRailjack });
       loadFissures(); // Reload list to apply filters
     }
 
     function renderFilters(allMissionTypes) {
       filterMenuEl.innerHTML = "";
 
-      // Railjack Toggle
-      const rjRow = document.createElement("div");
-      rjRow.className = "filter-row";
-      rjRow.innerHTML = `
-        <input type="checkbox" id="filter-rj" ${showRailjack ? "checked" : ""}>
-        <label for="filter-rj" style="color: #facc15;">Show Railjack (Void Storms)</label>
-      `;
-      filterMenuEl.appendChild(rjRow);
-      rjRow.querySelector("input").addEventListener("change", (e) => {
-        showRailjack = e.target.checked;
-        saveFilters();
-      });
-
-      // Separator
-      const sep = document.createElement("div");
-      sep.style.height = "1px";
-      sep.style.background = "#444";
-      sep.style.margin = "0.5rem 0";
-      filterMenuEl.appendChild(sep);
-
-      // Tiers Header
-      const tierHeader = document.createElement("div");
-      tierHeader.className = "group-header";
-      tierHeader.textContent = "Tiers";
-      filterMenuEl.appendChild(tierHeader);
-
       const tiers = ['Lith', 'Meso', 'Neo', 'Axi', 'Requiem', 'Omnia'];
+
+      // --- General Settings ---
+      const generalSection = document.createElement("div");
+      generalSection.innerHTML = `<div class="filter-section-title">General</div>`;
+      const generalGrid = document.createElement("div");
+      generalGrid.className = "filter-grid";
+      
+      const rjOption = document.createElement("label");
+      rjOption.className = "filter-option";
+      rjOption.innerHTML = `<input type="checkbox" ${showRailjack ? "checked" : ""}> <span style="color: #facc15;">Show Railjack</span>`;
+      rjOption.querySelector("input").addEventListener("change", (e) => {
+          showRailjack = e.target.checked;
+          saveFilters();
+      });
+      generalGrid.appendChild(rjOption);
+      generalSection.appendChild(generalGrid);
+      filterMenuEl.appendChild(generalSection);
+
+      // --- Fissure Tiers ---
+      const tierSection = document.createElement("div");
+      tierSection.innerHTML = `<div class="filter-section-title">Fissure Tiers</div>`;
+      const tierGrid = document.createElement("div");
+      tierGrid.className = "filter-grid";
+
       tiers.forEach(tier => {
-        const row = document.createElement("div");
-        row.className = "filter-row";
+        const label = document.createElement("label");
+        label.className = "filter-option";
         const isHidden = hiddenTiers.includes(tier);
-        row.innerHTML = `<input type="checkbox" id="filter-${tier}" ${!isHidden ? "checked" : ""}><label for="filter-${tier}">${tier}</label>`;
-        filterMenuEl.appendChild(row);
-        row.querySelector("input").addEventListener("change", (e) => {
+        label.innerHTML = `<input type="checkbox" ${!isHidden ? "checked" : ""}> ${tier}`;
+        label.querySelector("input").addEventListener("change", (e) => {
           if (e.target.checked) hiddenTiers = hiddenTiers.filter(t => t !== tier);
           else if (!hiddenTiers.includes(tier)) hiddenTiers.push(tier);
           saveFilters();
         });
+        tierGrid.appendChild(label);
+      });
+      tierSection.appendChild(tierGrid);
+      filterMenuEl.appendChild(tierSection);
+
+      // --- Reset Timers ---
+      const resetSection = document.createElement("div");
+      resetSection.innerHTML = `<div class="filter-section-title">Reset Timers</div>`;
+      const resetGrid = document.createElement("div");
+      resetGrid.className = "filter-grid";
+
+      tiers.forEach(tier => {
+        const label = document.createElement("label");
+        label.className = "filter-option";
+        const isHidden = hiddenResetTiers.includes(tier);
+        label.innerHTML = `<input type="checkbox" ${!isHidden ? "checked" : ""}> ${tier}`;
+        label.querySelector("input").addEventListener("change", (e) => {
+          if (e.target.checked) hiddenResetTiers = hiddenResetTiers.filter(t => t !== tier);
+          else if (!hiddenResetTiers.includes(tier)) hiddenResetTiers.push(tier);
+          saveFilters();
+        });
+        resetGrid.appendChild(label);
+      });
+      resetSection.appendChild(resetGrid);
+      filterMenuEl.appendChild(resetSection);
+
+      // --- Mission Types ---
+      const railjackTypes = ['Orphix', 'Skirmish', 'Volatile'];
+      const ignoredTypes = ['Arena', 'Rush', 'Pursuit', 'Assault', 'Exterminate', 'Disruption', 'Assassination', 'Corruption'];
+      
+      const normalMissions = [];
+      const railjackMissions = [];
+      
+      allMissionTypes.sort().forEach(type => {
+        if (ignoredTypes.includes(type)) return;
+        if (railjackTypes.includes(type)) {
+            railjackMissions.push(type);
+        } else {
+            normalMissions.push(type);
+        }
       });
 
-      // Mission Types Header
-      const missionHeader = document.createElement("div");
-      missionHeader.className = "group-header";
-      missionHeader.style.marginTop = "0.5rem";
-      missionHeader.textContent = "Missions";
-      filterMenuEl.appendChild(missionHeader);
-
-      // Mission Types
-      allMissionTypes.sort().forEach(type => {
-        const row = document.createElement("div");
-        row.className = "filter-row";
+      const createMissionCheckbox = (type, container) => {
+        const label = document.createElement("label");
+        label.className = "filter-option";
         const isHidden = hiddenMissionTypes.includes(type);
-        row.innerHTML = `
-          <input type="checkbox" id="filter-${type}" ${!isHidden ? "checked" : ""}>
-          <label for="filter-${type}">${type}</label>
-        `;
-        filterMenuEl.appendChild(row);
-
-        row.querySelector("input").addEventListener("change", (e) => {
+        label.innerHTML = `<input type="checkbox" ${!isHidden ? "checked" : ""}> ${type}`;
+        label.querySelector("input").addEventListener("change", (e) => {
           if (e.target.checked) {
             hiddenMissionTypes = hiddenMissionTypes.filter(t => t !== type);
           } else {
@@ -1662,7 +1734,28 @@
           }
           saveFilters();
         });
-      });
+        container.appendChild(label);
+      };
+
+      if (normalMissions.length > 0) {
+          const missionSection = document.createElement("div");
+          missionSection.innerHTML = `<div class="filter-section-title">Normal Missions</div>`;
+          const missionGrid = document.createElement("div");
+          missionGrid.className = "filter-grid";
+          normalMissions.forEach(type => createMissionCheckbox(type, missionGrid));
+          missionSection.appendChild(missionGrid);
+          filterMenuEl.appendChild(missionSection);
+      }
+
+      if (railjackMissions.length > 0) {
+          const rjSection = document.createElement("div");
+          rjSection.innerHTML = `<div class="filter-section-title">Railjack Missions</div>`;
+          const rjGrid = document.createElement("div");
+          rjGrid.className = "filter-grid";
+          railjackMissions.forEach(type => createMissionCheckbox(type, rjGrid));
+          rjSection.appendChild(rjGrid);
+          filterMenuEl.appendChild(rjSection);
+      }
     }
 
     // Clock
@@ -1675,7 +1768,7 @@
     updateClock();
 
     // Timer Logic
-    function formatTimeLeft(expiryStr) {
+    function formatTimeLeft(expiryStr, showSeconds = true) {
       const now = new Date();
       const expiry = new Date(expiryStr);
       const diff = expiry - now;
@@ -1686,41 +1779,139 @@
       const minutes = Math.floor((diff % 3600000) / 60000);
       const seconds = Math.floor((diff % 60000) / 1000);
       
-      if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-      return `${minutes}m ${seconds}s`;
+      if (hours > 0) return showSeconds ? `${hours}h ${minutes}m ${seconds}s` : `${hours}h ${minutes}m`;
+      if (minutes > 0) return showSeconds ? `${minutes}m ${seconds}s` : `${minutes}m`;
+      return `${seconds}s`;
     }
 
     function updateTimers() {
       const timers = document.querySelectorAll('.fissure-timer');
+      const now = new Date();
+      let shouldRefresh = false;
+
       timers.forEach(el => {
-        const expiry = el.dataset.expiry;
-        if (expiry) el.textContent = formatTimeLeft(expiry);
+        let expiry = el.dataset.expiry;
+        
+        // Handle Reset Timers switching to Hard Expiry
+        if (el.dataset.reset && el.dataset.hardExpiry) {
+            const resetDate = new Date(el.dataset.reset);
+            const hardDate = new Date(el.dataset.hardExpiry);
+
+            if (now > resetDate) {
+                expiry = el.dataset.hardExpiry;
+                el.style.color = '#f87171'; // Red to indicate ending
+
+                // Dynamic Polling:
+                // If in "Red Zone" (Reset passed, Hard not reached), poll every 15s to catch early updates
+                // If "Expired" (Hard passed), poll every 5s to find next rotation
+                const pollInterval = (now < hardDate) ? 15000 : 5000;
+                if (Date.now() - lastFetchTime > pollInterval) shouldRefresh = true;
+            } else {
+                el.style.color = '';
+            }
+        }
+
+        const isReset = el.closest('#resetTimers') !== null;
+        if (expiry) el.textContent = formatTimeLeft(expiry, !isReset);
       });
+
+      // Check for waiting placeholders
+      if (document.querySelectorAll('.reset-row.waiting').length > 0) {
+          if (Date.now() - lastFetchTime > 10000) shouldRefresh = true;
+      }
+
+      if (shouldRefresh && !isFetchingFissures) {
+          loadFissures();
+      }
     }
     setInterval(updateTimers, 1000);
 
     const STANDARD_MISSION_TYPES = [
-      'Alchemy', 'Arena', 'Assassination', 'Assault', 'Capture', 'Defense', 
+      'Alchemy', 'Assassination', 'Assault', 'Capture', 'Defense', 
       'Disruption', 'Excavation', 'Exterminate', 'Hijack', 'Hive', 'Interception', 
-      'Mobile Defense', 'Orphix', 'Pursuit', 'Rescue', 'Rush', 'Sabotage', 
+      'Mobile Defense', 'Orphix', 'Rescue', 'Sabotage', 
       'Skirmish', 'Spy', 'Survival', 'Volatile'
     ];
 
     function renderFissures(fissures) {
         const now = new Date();
+        
+        // Fix mission type naming
+        fissures.forEach(f => {
+            if (f.missionType === 'Extermination') f.missionType = 'Exterminate';
+        });
+
         const activeFissures = fissures.filter(f => new Date(f.expiry) > now);
         
         // Collect all mission types (Standard + any new ones from active fissures)
         const activeTypes = activeFissures.map(f => f.missionType).filter(Boolean);
         const allTypes = [...new Set([...STANDARD_MISSION_TYPES, ...activeTypes])].sort();
         
-        // Only re-render filters if the types have changed to avoid resetting scroll/focus while menu is open
-        const currentRenderedTypes = Array.from(filterMenuEl.querySelectorAll('label')).map(l => l.textContent).filter(t => t !== "Show Railjack (Void Storms)");
-        const typesChanged = allTypes.length !== currentRenderedTypes.length || !allTypes.every(t => currentRenderedTypes.includes(t));
+        const typesChanged = JSON.stringify(allTypes) !== JSON.stringify(lastRenderedMissionTypes);
         
         if (typesChanged) {
              renderFilters(allTypes);
+             lastRenderedMissionTypes = allTypes;
         }
+        
+        // --- Reset Timer Logic (Column) ---
+        resetTimersEl.innerHTML = "";
+        resetTimersEl.style.display = "flex";
+        const tiers = ['Lith', 'Meso', 'Neo', 'Axi', 'Requiem', 'Omnia'];
+        
+        tiers.forEach(tier => {
+            if (hiddenResetTiers.includes(tier)) return;
+            // Use activeFissures (all active) not displayFissures (filtered)
+            const tierMissions = activeFissures.filter(f => f.tier === tier);
+            
+            if (tierMissions.length === 0) {
+                // Show placeholder if no active missions found (waiting for rotation)
+                const row = document.createElement('div');
+                row.className = 'reset-row waiting';
+                row.innerHTML = `<span class="reset-tier">${tier}</span><div class="reset-val" style="color:#52525b;">...</div>`;
+                resetTimersEl.appendChild(row);
+                return;
+            }
+
+            const normalMissions = tierMissions.filter(f => !f.isHard);
+            const spMissions = tierMissions.filter(f => f.isHard);
+
+            const getResetData = (missions) => {
+                if (!missions.length) return null;
+                // Find LATEST expiry
+                const maxExpiryStr = missions.reduce((max, curr) => new Date(curr.expiry) > new Date(max) ? curr.expiry : max, missions[0].expiry);
+                const maxExpiry = new Date(maxExpiryStr);
+                // Reset is 2 mins before latest expiry
+                return { reset: new Date(maxExpiry.getTime() - 2 * 60000), hard: maxExpiry };
+            };
+
+            const normalData = getResetData(normalMissions);
+            const spData = getResetData(spMissions);
+
+            if (normalData || spData) {
+                const row = document.createElement('div');
+                row.className = 'reset-row';
+                let html = `<span class="reset-tier">${tier}</span><div class="reset-val">`;
+                
+                const generateTimerHtml = (label, data) => {
+                    if (!data) return '';
+                    let target = data.reset;
+                    let style = '';
+                    if (new Date() > data.reset) {
+                        target = data.hard;
+                        style = 'color:#f87171;';
+                    }
+                    return `<span>${label}: <span class="fissure-timer" style="background:transparent; padding:0; ${style}" data-expiry="${data.reset.toISOString()}" data-reset="${data.reset.toISOString()}" data-hard-expiry="${data.hard.toISOString()}">${formatTimeLeft(target, false)}</span></span>`;
+                };
+
+                if (normalData) html += generateTimerHtml('N', normalData);
+                if (spData) html += generateTimerHtml('SP', spData);
+                
+                html += `</div>`;
+                row.innerHTML = html;
+                resetTimersEl.appendChild(row);
+            }
+        });
 
         // Filter logic
         const displayFissures = activeFissures.filter(f => {
@@ -1749,7 +1940,7 @@
         });
 
         // Define order to ensure consistent display
-        const tierOrder = ['Lith', 'Meso', 'Neo', 'Axi', 'Requiem', 'Omnia'];
+        const tierOrder = tiers;
 
         // Render groups
         for (const tier of tierOrder) {
@@ -1785,24 +1976,37 @@
     async function loadFissures() {
       if (!window.electronAPI) return;
       
+      if (isFetchingFissures) return;
+
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+        retryTimeout = null;
+      }
+
+      isFetchingFissures = true;
       const btn = refreshFissuresBtn;
-      const originalText = btn.textContent;
       btn.textContent = "...";
       btn.disabled = true;
       
       try {
         const fissures = await window.electronAPI.getFissures();
+        lastFetchTime = Date.now();
         if (!Array.isArray(fissures)) throw new Error("Invalid data received");
         
         lastFissuresData = fissures;
         renderFissures(fissures);
       } catch (err) {
         console.error(err);
+        lastFetchTime = Date.now();
         if (lastFissuresData.length > 0) renderFissures(lastFissuresData);
-        else fissureListEl.innerHTML = '<div style="text-align:center; color:#f87171;">Error loading data.</div>';
+        else fissureListEl.innerHTML = '<div style="text-align:center; color:#f87171; margin-top:2rem;">Connection failed.<br>Retrying in 5s...</div>';
+        
+        // Retry until success
+        retryTimeout = setTimeout(loadFissures, 5000);
       } finally {
-        btn.textContent = originalText;
+        btn.textContent = "Refresh";
         btn.disabled = false;
+        isFetchingFissures = false;
       }
     }
 

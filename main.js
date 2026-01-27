@@ -33,6 +33,8 @@ if (!settings.scanArea) settings.scanArea = null;
 if (!settings.voidCascadeScanArea) settings.voidCascadeScanArea = null;
 if (typeof settings.autoScanEnabled === 'undefined') settings.autoScanEnabled = false;
 if (typeof settings.autoScanPause === 'undefined') settings.autoScanPause = 30;
+if (typeof settings.scanIntervalNormal === 'undefined') settings.scanIntervalNormal = 10;
+if (typeof settings.scanIntervalCascade === 'undefined') settings.scanIntervalCascade = 5;
 if (typeof settings.osdEnabled === 'undefined') settings.osdEnabled = false;
 if (!settings.osdPosition) settings.osdPosition = { x: 100, y: 100 };
 if (typeof settings.osdOpacity === 'undefined') settings.osdOpacity = 1.0;
@@ -117,6 +119,10 @@ app.whenReady().then(() => {
   if (settings.osdEnabled) {
     createOSDWindow();
   }
+
+  // Check for updates on start, but don't download automatically
+  autoUpdater.autoDownload = false;
+  autoUpdater.checkForUpdates();
   
   // --- Auto Updater Events ---
   autoUpdater.on('checking-for-update', () => {
@@ -124,6 +130,7 @@ app.whenReady().then(() => {
   });
   autoUpdater.on('update-available', (info) => {
     if (win) win.webContents.send('update-status', 'Update available. Downloading...');
+    if (win) win.webContents.send('update-available', info);
   });
   autoUpdater.on('update-not-available', (info) => {
     if (win) win.webContents.send('update-status', 'You are on the latest version.');
@@ -136,9 +143,8 @@ app.whenReady().then(() => {
     if (win) win.webContents.send('update-status', log_message);
   });
   autoUpdater.on('update-downloaded', (info) => {
-    if (win) win.webContents.send('update-status', 'Update downloaded. Restarting...');
-    // Quit and install immediately after download
-    autoUpdater.quitAndInstall();
+    if (win) win.webContents.send('update-status', 'Update downloaded. Ready to install.');
+    if (win) win.webContents.send('update-downloaded');
   });
 });
 
@@ -290,6 +296,16 @@ ipcMain.on('set-auto-scan-pause', (event, seconds) => {
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 });
 
+ipcMain.on('set-scan-interval', (event, { type, seconds }) => {
+  if (type === 'normal') settings.scanIntervalNormal = seconds;
+  if (type === 'cascade') settings.scanIntervalCascade = seconds;
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  // Restart scanner if active to apply new interval
+  if (settings.autoScanEnabled) {
+    startAutoScanner();
+  }
+});
+
 ipcMain.on('set-void-cascade-mode', (event, enabled) => {
   settings.voidCascadeMode = enabled;
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
@@ -331,7 +347,7 @@ ipcMain.on('set-osd-locked', (event, locked) => {
   settings.osdLocked = locked;
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
   if (osdWin && !osdWin.isDestroyed()) {
-    osdWin.setIgnoreMouseEvents(locked, { forward: true });
+    osdWin.setIgnoreMouseEvents(locked);
   }
 });
 
@@ -347,6 +363,14 @@ ipcMain.on('open-external', (event, url) => {
 
 ipcMain.on('check-for-update', () => {
   autoUpdater.checkForUpdates();
+});
+
+ipcMain.on('download-update', () => {
+  autoUpdater.downloadUpdate();
+});
+
+ipcMain.on('quit-and-install', () => {
+  autoUpdater.quitAndInstall();
 });
 
 function createOSDWindow() {
@@ -375,7 +399,7 @@ function createOSDWindow() {
   });
 
   if (settings.osdLocked) {
-    osdWin.setIgnoreMouseEvents(true, { forward: true });
+    osdWin.setIgnoreMouseEvents(true);
   }
 
   osdWin.loadFile('osd.html');
@@ -520,7 +544,9 @@ function startAutoScanner() {
   stopAutoScanner();
   const currentArea = settings.voidCascadeMode ? settings.voidCascadeScanArea : settings.scanArea;
   if (currentArea) {
-    const interval = settings.voidCascadeMode ? 5000 : 10000;
+    const interval = settings.voidCascadeMode 
+      ? (settings.scanIntervalCascade * 1000) 
+      : (settings.scanIntervalNormal * 1000);
     autoScanInterval = setInterval(scanScreen, interval);
   }
 }

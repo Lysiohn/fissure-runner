@@ -50,6 +50,7 @@
       padding: 1rem;
       overflow-y: auto;
       min-width: 320px;
+      min-height: 0;
     }
 
     .layout-column.editing {
@@ -62,6 +63,7 @@
       position: relative;
       transition: transform 0.2s, box-shadow 0.2s;
       overflow: hidden;
+      flex-shrink: 0;
     }
 
 
@@ -215,7 +217,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0.6rem 1.5rem;
+      padding: 0 1rem;
+      height: 42px;
       cursor: pointer;
       user-select: none;
     }
@@ -224,21 +227,27 @@
       width: 16px;
       height: 16px;
       stroke: #a1a1aa;
-      transition: transform 0.2s ease-in-out;
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .settings-content {
-      padding: 0 1.5rem 1.5rem 1.5rem;
-      transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out, visibility 0.3s;
-      max-height: 1000px; /* Large enough to not clip content */
+      display: grid;
+      grid-template-rows: 1fr;
+      transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s;
+      opacity: 1;
       overflow: hidden;
     }
 
     .settings-content.collapsed {
-      max-height: 0;
-      padding-top: 0;
-      padding-bottom: 0;
+      grid-template-rows: 0fr;
+      opacity: 0;
       visibility: hidden;
+    }
+
+    .settings-inner {
+      padding: 0 1rem 1rem 1rem;
+      overflow: hidden;
+      min-height: 0;
     }
 
     .settings-card.collapsed .chevron {
@@ -257,6 +266,8 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      line-height: normal;
+      padding-top: 1px;
     }
     
     .settings-card[data-setting-key="hotkeySettingsCollapsed"] .settings-header h3::before {
@@ -512,7 +523,7 @@
     }
 
     .settings-btn {
-      position: absolute;
+      position: fixed;
       bottom: 1rem;
       right: 1rem;
       top: auto;
@@ -523,7 +534,7 @@
       padding: 0.5rem;
       border-radius: 50%;
       transition: background 0.2s, color 0.2s;
-      z-index: 10;
+      z-index: 500;
       width: auto;
       flex: none;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -569,12 +580,18 @@
       height: 100%;
       background: rgba(0, 0, 0, 0.7);
       z-index: 1000;
-      display: none;
+      display: flex;
       justify-content: center;
       align-items: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s;
+      pointer-events: none;
     }
     .modal-overlay.visible {
-      display: flex;
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
     }
     .modal-content {
       background: #18181b;
@@ -584,6 +601,11 @@
       width: 90%;
       max-width: 400px;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      transform: scale(0.95);
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .modal-overlay.visible .modal-content {
+      transform: scale(1);
     }
     .modal-header {
       display: flex;
@@ -686,16 +708,18 @@
           <svg class="chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
         </div>
         <div id="hotkeySettings" class="settings-content">
-          <div class="hotkey-row">
-            <span class="hotkey-label">Current Hotkey:</span>
-            <span id="currentHotkey" class="hotkey-value"></span>
+          <div class="settings-inner">
+            <div class="hotkey-row">
+              <span class="hotkey-label">Current Hotkey:</span>
+              <span id="currentHotkey" class="hotkey-value"></span>
+            </div>
+            <div class="hotkey-row">
+              <label for="hotkeyEnabledToggle" style="cursor: pointer; color: #a1a1aa;">Enable Hotkey</label>
+              <input type="checkbox" id="hotkeyEnabledToggle" style="cursor: pointer;" />
+            </div>
+            <button id="recordHotkeyBtn" class="record-btn">Record New Hotkey</button>
+            <div id="recordStatus" class="record-status">Press any key…</div>
           </div>
-          <div class="hotkey-row">
-            <label for="hotkeyEnabledToggle" style="cursor: pointer; color: #a1a1aa;">Enable Hotkey</label>
-            <input type="checkbox" id="hotkeyEnabledToggle" style="cursor: pointer;" />
-          </div>
-          <button id="recordHotkeyBtn" class="record-btn">Record New Hotkey</button>
-          <div id="recordStatus" class="record-status">Press any key…</div>
         </div>
       </div>
       </div>
@@ -707,29 +731,39 @@
           <svg class="chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
         </div>
         <div id="autoScannerSettings" class="settings-content">
-          <div class="scanner-row">
-            <label for="autoScanToggle" style="cursor: pointer;">Enable Auto-Scanner</label>
-            <input type="checkbox" id="autoScanToggle" style="cursor: pointer;" />
-          </div>
-          <div class="scanner-row">
-            <label for="scanPauseInput">Pause (seconds)</label>
-            <input type="number" id="scanPauseInput" min="5" value="30" />
-          </div>
-          <button id="setScanAreaBtn">Set Normal Scan Area</button>
-          <button id="setVoidCascadeAreaBtn" class="record-btn" style="margin-top: 0.5rem;">Set Void Cascade Area</button>
-          <div id="scanAreaDisplay">No area set.</div>
-          <div class="scanner-row" style="margin-top: 0.5rem;">
-            <label for="showScannerPreviewToggle" style="cursor: pointer;">Show Scanner Preview Button</label>
-            <input type="checkbox" id="showScannerPreviewToggle" style="cursor: pointer;" />
-          </div>
-          <button id="testScannerBtn" class="record-btn" style="margin-top: 0.5rem; border-color: #eab308; color: #eab308;">Test Scanner (Preview)</button>
-          <div id="scannerPreview" style="margin-top: 0.5rem; display: none; flex-direction: column; gap: 0.5rem;">
-            <div style="font-size: 0.8rem; color: #a1a1aa;">Raw Text:</div>
-            <div id="scannerRawText" style="font-family: monospace; background: #000; padding: 0.5rem; border-radius: 4px; color: #fff; font-size: 0.8rem; word-break: break-all;"></div>
-            <div style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.25rem;">Processed Text:</div>
-            <div id="scannerProcessedText" style="font-family: monospace; background: #000; padding: 0.5rem; border-radius: 4px; color: #eab308; font-size: 0.8rem; word-break: break-all;"></div>
-            <div id="scannerMatchStatus" style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.25rem; font-weight: bold; text-align: center;"></div>
-            <img id="scannerSnapshot" style="width: 100%; border: 1px solid #3f3f46; border-radius: 4px;" />
+          <div class="settings-inner">
+            <div class="scanner-row">
+              <label for="autoScanToggle" style="cursor: pointer;">Enable Auto-Scanner</label>
+              <input type="checkbox" id="autoScanToggle" style="cursor: pointer;" />
+            </div>
+            <div class="scanner-row">
+              <label for="scanPauseInput">Pause (seconds)</label>
+              <input type="number" id="scanPauseInput" min="5" value="30" />
+            </div>
+            <div class="scanner-row">
+              <label for="scanIntervalNormalInput">Normal Interval (s)</label>
+              <input type="number" id="scanIntervalNormalInput" min="1" value="10" style="width: 50px; background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px; text-align: center;" />
+            </div>
+            <div class="scanner-row">
+              <label for="scanIntervalCascadeInput">Cascade Interval (s)</label>
+              <input type="number" id="scanIntervalCascadeInput" min="1" value="5" style="width: 50px; background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px; text-align: center;" />
+            </div>
+            <button id="setScanAreaBtn">Set Normal Scan Area</button>
+            <button id="setVoidCascadeAreaBtn" class="record-btn" style="margin-top: 0.5rem;">Set Void Cascade Area</button>
+            <div id="scanAreaDisplay">No area set.</div>
+            <div class="scanner-row" style="margin-top: 0.5rem;">
+              <label for="showScannerPreviewToggle" style="cursor: pointer;">Show Scanner Preview Button</label>
+              <input type="checkbox" id="showScannerPreviewToggle" style="cursor: pointer;" />
+            </div>
+            <button id="testScannerBtn" class="record-btn" style="margin-top: 0.5rem; border-color: #eab308; color: #eab308;">Test Scanner (Preview)</button>
+            <div id="scannerPreview" style="margin-top: 0.5rem; display: none; flex-direction: column; gap: 0.5rem;">
+              <div style="font-size: 0.8rem; color: #a1a1aa;">Raw Text:</div>
+              <div id="scannerRawText" style="font-family: monospace; background: #000; padding: 0.5rem; border-radius: 4px; color: #fff; font-size: 0.8rem; word-break: break-all;"></div>
+              <div style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.25rem;">Processed Text:</div>
+              <div id="scannerProcessedText" style="font-family: monospace; background: #000; padding: 0.5rem; border-radius: 4px; color: #eab308; font-size: 0.8rem; word-break: break-all;"></div>
+              <div id="scannerMatchStatus" style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.25rem; font-weight: bold; text-align: center;"></div>
+              <img id="scannerSnapshot" style="width: 100%; border: 1px solid #3f3f46; border-radius: 4px;" />
+            </div>
           </div>
         </div>
       </div>
@@ -742,21 +776,23 @@
           <svg class="chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
         </div>
         <div id="osdSettings" class="settings-content">
-          <div class="scanner-row" style="margin-bottom:0.75rem;">
-            <label for="osdToggle" style="cursor: pointer; font-weight:600; color:#e4e4e7;">Enable OSD</label>
-            <input type="checkbox" id="osdToggle" style="cursor: pointer;" />
-          </div>
-          <div class="scanner-row" style="margin-top: 0.5rem;">
-            <label for="osdOpacity">Background Opacity</label>
-            <input type="range" id="osdOpacity" min="0.2" max="1" step="0.1" style="width: 100px; accent-color: #6366f1;">
-          </div>
-          <div class="scanner-row">
-            <label for="osdScale">Size</label>
-            <input type="range" id="osdScale" min="0.5" max="2.0" step="0.1" style="width: 100px; accent-color: #6366f1;">
-          </div>
-          <div class="scanner-row" style="margin-top: 0.5rem;">
-            <label for="osdLockToggle" style="cursor: pointer;">Lock Position (Click-through)</label>
-            <input type="checkbox" id="osdLockToggle" style="cursor: pointer;" />
+          <div class="settings-inner">
+            <div class="scanner-row" style="margin-bottom:0.75rem;">
+              <label for="osdToggle" style="cursor: pointer; font-weight:600; color:#e4e4e7;">Enable OSD</label>
+              <input type="checkbox" id="osdToggle" style="cursor: pointer;" />
+            </div>
+            <div class="scanner-row" style="margin-top: 0.5rem;">
+              <label for="osdOpacity">Background Opacity</label>
+              <input type="range" id="osdOpacity" min="0.2" max="1" step="0.1" style="width: 100px; accent-color: #6366f1;">
+            </div>
+            <div class="scanner-row">
+              <label for="osdScale">Size</label>
+              <input type="range" id="osdScale" min="0.5" max="2.0" step="0.1" style="width: 100px; accent-color: #6366f1;">
+            </div>
+            <div class="scanner-row" style="margin-top: 0.5rem;">
+              <label for="osdLockToggle" style="cursor: pointer;">Lock Position (Click-through)</label>
+              <input type="checkbox" id="osdLockToggle" style="cursor: pointer;" />
+            </div>
           </div>
         </div>
       </div>
@@ -781,15 +817,16 @@
       <div id="fissureList" class="fissure-list">
         <div style="text-align:center; color:#666; margin-top:2rem;">Loading...</div>
       </div>
-      <button id="settingsBtn" class="settings-btn" title="General Settings">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-      </button>
     </div>
     </div>
     </div>
 
     <div id="hydrationPopup" class="hydration-popup">💧 Time to drink some water!</div>
     
+    <button id="settingsBtn" class="settings-btn" title="General Settings">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+    </button>
+
     <!-- General Settings Modal -->
     <div id="settingsModal" class="modal-overlay">
       <div class="modal-content">
@@ -830,7 +867,6 @@
         <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
           <button id="presetDefaultBtn" class="refresh-btn" style="flex:1;">Default</button>
           <button id="presetCompactBtn" class="refresh-btn" style="flex:1;">Compact</button>
-          <button id="presetWideBtn" class="refresh-btn" style="flex:1;">2-Col</button>
         </div>
         <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
           <button id="saveCustomLayoutBtn" class="refresh-btn" style="flex:1; border-color: #10b981; color: #10b981;">Save Custom</button>
@@ -845,6 +881,24 @@
         <div class="divider"></div>
         <div class="label" style="margin-top: 1rem;">Support</div>
         <button id="kofiBtn" class="record-btn" style="background-color: #FF5E5B; border-color: #FF5E5B; color: white;">Support me on Ko-fi ❤️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Update Prompt Modal -->
+  <div id="updateModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Update Available</h3>
+        <button id="closeUpdateModalBtn" class="close-modal"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+      </div>
+      <div id="updateModalContent">
+        <p id="updateMessage" style="color: #e4e4e7; margin-bottom: 1.5rem;">A new version is available. Would you like to download it now?</p>
+        <div class="buttons">
+          <button id="downloadUpdateBtn" style="background: #10b981; color: #000;">Download Now</button>
+          <button id="laterUpdateBtn" class="refresh-btn">Later</button>
+          <button id="restartUpdateBtn" style="background: #10b981; color: #000; display: none;">Restart & Install</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1066,6 +1120,8 @@
     const setVoidCascadeAreaBtn = document.getElementById('setVoidCascadeAreaBtn');
     const scanAreaDisplay = document.getElementById('scanAreaDisplay');
     const scanPauseInput = document.getElementById('scanPauseInput');
+    const scanIntervalNormalInput = document.getElementById('scanIntervalNormalInput');
+    const scanIntervalCascadeInput = document.getElementById('scanIntervalCascadeInput');
     const testScannerBtn = document.getElementById('testScannerBtn');
     const scannerPreview = document.getElementById('scannerPreview');
     const scannerRawText = document.getElementById('scannerRawText');
@@ -1149,6 +1205,16 @@
     scanPauseInput.addEventListener('change', () => {
       const val = parseInt(scanPauseInput.value);
       if (val > 0 && window.electronAPI) window.electronAPI.setAutoScanPause(val);
+    });
+
+    scanIntervalNormalInput.addEventListener('change', () => {
+      const val = parseInt(scanIntervalNormalInput.value);
+      if (val > 0 && window.electronAPI) window.electronAPI.setScanInterval('normal', val);
+    });
+
+    scanIntervalCascadeInput.addEventListener('change', () => {
+      const val = parseInt(scanIntervalCascadeInput.value);
+      if (val > 0 && window.electronAPI) window.electronAPI.setScanInterval('cascade', val);
     });
 
     window.electronAPI.onScanAreaUpdated((event, areas) => {
@@ -1383,6 +1449,53 @@
       }
     }
 
+    /* --- UPDATE MODAL LOGIC --- */
+    const updateModal = document.getElementById('updateModal');
+    const closeUpdateModalBtn = document.getElementById('closeUpdateModalBtn');
+    const downloadUpdateBtn = document.getElementById('downloadUpdateBtn');
+    const laterUpdateBtn = document.getElementById('laterUpdateBtn');
+    const restartUpdateBtn = document.getElementById('restartUpdateBtn');
+    const updateMessage = document.getElementById('updateMessage');
+
+    function showUpdateModal() {
+      updateModal.classList.add('visible');
+    }
+
+    function hideUpdateModal() {
+      updateModal.classList.remove('visible');
+    }
+
+    closeUpdateModalBtn.addEventListener('click', hideUpdateModal);
+    laterUpdateBtn.addEventListener('click', hideUpdateModal);
+
+    downloadUpdateBtn.addEventListener('click', () => {
+      if (window.electronAPI) {
+        window.electronAPI.downloadUpdate();
+        downloadUpdateBtn.textContent = "Downloading...";
+        downloadUpdateBtn.disabled = true;
+        laterUpdateBtn.disabled = true;
+      }
+    });
+
+    restartUpdateBtn.addEventListener('click', () => {
+      if (window.electronAPI) window.electronAPI.quitAndInstall();
+    });
+
+    if (window.electronAPI) {
+      window.electronAPI.onUpdateAvailable((event, info) => {
+        updateMessage.textContent = `Version ${info.version} is available. Would you like to download it now?`;
+        showUpdateModal();
+      });
+
+      window.electronAPI.onUpdateDownloaded(() => {
+        updateMessage.textContent = "Update downloaded and ready to install.";
+        downloadUpdateBtn.style.display = 'none';
+        laterUpdateBtn.style.display = 'none';
+        restartUpdateBtn.style.display = 'inline-flex';
+        showUpdateModal();
+      });
+    }
+
     /* --- FISSURE LOGIC --- */
     const fissureListEl = document.getElementById("fissureList");
     const refreshFissuresBtn = document.getElementById("refreshFissures");
@@ -1408,6 +1521,9 @@
           showRailjack = settings.showRailjack || false;
           autoScanToggle.checked = settings.autoScanEnabled || false;
           
+          scanIntervalNormalInput.value = settings.scanIntervalNormal || 10;
+          scanIntervalCascadeInput.value = settings.scanIntervalCascade || 5;
+
           // Load Relic Name
           if (settings.relicName) {
             relicNameInput.value = settings.relicName;
@@ -1583,12 +1699,20 @@
     }
     setInterval(updateTimers, 1000);
 
+    const STANDARD_MISSION_TYPES = [
+      'Alchemy', 'Arena', 'Assassination', 'Assault', 'Capture', 'Defense', 
+      'Disruption', 'Excavation', 'Exterminate', 'Hijack', 'Hive', 'Interception', 
+      'Mobile Defense', 'Orphix', 'Pursuit', 'Rescue', 'Rush', 'Sabotage', 
+      'Skirmish', 'Spy', 'Survival', 'Volatile'
+    ];
+
     function renderFissures(fissures) {
         const now = new Date();
         const activeFissures = fissures.filter(f => new Date(f.expiry) > now);
         
-        // Collect all mission types from active fissures for the filter menu
-        const allTypes = [...new Set(activeFissures.map(f => f.missionType).filter(Boolean))];
+        // Collect all mission types (Standard + any new ones from active fissures)
+        const activeTypes = activeFissures.map(f => f.missionType).filter(Boolean);
+        const allTypes = [...new Set([...STANDARD_MISSION_TYPES, ...activeTypes])].sort();
         
         // Only re-render filters if the types have changed to avoid resetting scroll/focus while menu is open
         const currentRenderedTypes = Array.from(filterMenuEl.querySelectorAll('label')).map(l => l.textContent).filter(t => t !== "Show Railjack (Void Storms)");
@@ -1692,7 +1816,6 @@
     const draggablePanels = document.querySelectorAll('.draggable-panel');
     const presetDefaultBtn = document.getElementById('presetDefaultBtn');
     const presetCompactBtn = document.getElementById('presetCompactBtn');
-    const presetWideBtn = document.getElementById('presetWideBtn');
     const saveCustomLayoutBtn = document.getElementById('saveCustomLayoutBtn');
     const loadCustomLayoutBtn = document.getElementById('loadCustomLayoutBtn');
     const layoutContainer = document.getElementById('layoutContainer');
@@ -1851,16 +1974,11 @@
       compact: {
         col2: { width: null, panels: [{id: 'panel-runner', height: null}, {id: 'panel-fissures', height: '400px'}, {id: 'panel-hotkey', height: null}, {id: 'panel-scanner', height: null}, {id: 'panel-osd', height: null}] },
         col3: { width: null, panels: [] }
-      },
-      wide: {
-        col2: { width: null, panels: [{id: 'panel-runner', height: null}, {id: 'panel-hotkey', height: null}, {id: 'panel-scanner', height: null}, {id: 'panel-osd', height: null}, {id: 'panel-fissures', height: '100%'}] },
-        col3: { width: null, panels: [] }
       }
     };
 
     presetDefaultBtn.addEventListener('click', () => { applyLayout(presets.default); saveLayout(); });
     presetCompactBtn.addEventListener('click', () => { applyLayout(presets.compact); saveLayout(); });
-    presetWideBtn.addEventListener('click', () => { applyLayout(presets.wide); saveLayout(); });
 
     saveCustomLayoutBtn.addEventListener('click', () => {
       const layout = saveLayout(); // Saves to current active layout

@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onMissionCompleteDetected: (callback) => ipcRenderer.on('mission-complete-detected', callback),
   toggleAutoScan: (enabled) => ipcRenderer.send('toggle-auto-scan', enabled),
   setAutoScanPause: (seconds) => ipcRenderer.send('set-auto-scan-pause', seconds),
+  setScanInterval: (type, seconds) => ipcRenderer.send('set-scan-interval', { type, seconds }),
   setOSDEnabled: (enabled) => ipcRenderer.send('set-osd-enabled', enabled),
   updateOSD: (data) => ipcRenderer.send('update-osd', data),
   setOSDOpacity: (opacity) => ipcRenderer.send('set-osd-opacity', opacity),
@@ -30,6 +31,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setLayout: (layout) => ipcRenderer.send('set-layout', layout),
   checkForUpdate: () => ipcRenderer.send('check-for-update'),
   onUpdateStatus: (callback) => ipcRenderer.on('update-status', callback),
+  onUpdateAvailable: (callback) => ipcRenderer.on('update-available', callback),
+  onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback),
+  downloadUpdate: () => ipcRenderer.send('download-update'),
+  quitAndInstall: () => ipcRenderer.send('quit-and-install'),
   testScanner: () => ipcRenderer.invoke('test-scanner'),
   setVoidCascadeMode: (enabled) => ipcRenderer.send('set-void-cascade-mode', enabled),
   setHotkeyEnabled: (enabled) => ipcRenderer.send('set-hotkey-enabled', enabled)

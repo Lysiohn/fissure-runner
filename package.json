@@ -1,11 +1,46 @@
 {
   "name": "fissure-runner",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Warframe Fissure Runner",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.lysi.fissurerunner",
+    "productName": "Fissure Runner",
+    "directories": {
+      "output": "dist-installer"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Lysiohn",
+        "repo": "fissure-runner"
+      }
+    ],
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!dist-installer/**",
+      "!*.exe",
+      "!*.zip"
+    ],
+    "asarUnpack": [
+      "**/node_modules/tesseract.js-core/**/*"
+    ]
   },
   "keywords": [],
   "author": "",

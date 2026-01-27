@@ -45,6 +45,7 @@ if (typeof settings.hotkeyEnabled === 'undefined') settings.hotkeyEnabled = true
 if (typeof settings.voidCascadeMode === 'undefined') settings.voidCascadeMode = false;
 if (typeof settings.relicName === 'undefined') settings.relicName = "";
 if (typeof settings.rotationMode === 'undefined') settings.rotationMode = "4b4";
+if (typeof settings.oneByOnePosition === 'undefined') settings.oneByOnePosition = 1;
 if (typeof settings.hydrationReminderEnabled === 'undefined') settings.hydrationReminderEnabled = false;
 if (typeof settings.hydrationSound === 'undefined') settings.hydrationSound = null;
 if (typeof settings.hydrationIntervalMinutes === 'undefined') settings.hydrationIntervalMinutes = 60;
@@ -168,6 +169,11 @@ ipcMain.on("set-relic-name", (event, name) => {
 
 ipcMain.on("set-rotation-mode", (event, mode) => {
   settings.rotationMode = mode;
+  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+});
+
+ipcMain.on("set-1b1-position", (event, pos) => {
+  settings.oneByOnePosition = pos;
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 });
 

@@ -719,6 +719,17 @@
           <button id="cascadeBtn" class="mode-btn">Cascade</button>
         </div>
 
+        <!-- 1b1 Settings -->
+        <div id="settings1b1" style="display: none; margin-bottom: 0.75rem;">
+            <div class="label">1b1 Running Position</div>
+            <div class="mode-row">
+                <button class="mode-btn pos-btn active" data-pos="1">1st</button>
+                <button class="mode-btn pos-btn" data-pos="2">2nd</button>
+                <button class="mode-btn pos-btn" data-pos="3">3rd</button>
+                <button class="mode-btn pos-btn" data-pos="4">4th</button>
+            </div>
+        </div>
+
         <div class="buttons">
           <button id="startBtn">Start: Running</button>
           <button id="nextBtn">Next</button>
@@ -952,6 +963,8 @@
     const startBtn = document.getElementById("startBtn");
     const rotationBtns = document.querySelectorAll(".rotation-btn");
     const cascadeBtn = document.getElementById("cascadeBtn");
+    const settings1b1 = document.getElementById("settings1b1");
+    const posBtns = document.querySelectorAll(".pos-btn");
     const relicNameInput = document.getElementById("relicName");
 
     let currentMode = "4b4";
@@ -962,6 +975,7 @@
     let pressCount = 0;
     let isCascadeMode = false;
     let cycleStep = 0;
+    let runningPosition = 1;
 
     rotationBtns.forEach(btn => {
       btn.addEventListener("click", () => {
@@ -971,9 +985,39 @@
         if (window.electronAPI && window.electronAPI.setRotationMode) {
           window.electronAPI.setRotationMode(currentMode);
           cycleStep = 0; // Reset step on mode change
+          updateStartRelicFor1b1();
         }
+        update1b1Visibility();
       });
     });
+
+    posBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        posBtns.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        runningPosition = parseInt(btn.dataset.pos);
+        if (window.electronAPI && window.electronAPI.set1b1Position) {
+          window.electronAPI.set1b1Position(runningPosition);
+        }
+        updateStartRelicFor1b1();
+      });
+    });
+
+    function update1b1Visibility() {
+      settings1b1.style.display = currentMode === "1b1" ? "block" : "none";
+    }
+
+    function updateStartRelicFor1b1() {
+      if (currentMode === '1b1' && cycleStep === 0) {
+        // If we are at the start of a cycle, set the start relic based on position
+        startRelic = (runningPosition === 1) ? RUNNING : TRASH;
+        startBtn.textContent = `Start: ${startRelic}`;
+        if (upcoming !== null) {
+           // If user hasn't started yet but upcoming is set (e.g. reset), update it
+           // Note: usually upcoming is null until start is clicked, but this keeps UI consistent
+        }
+      }
+    }
 
     cascadeBtn.addEventListener("click", () => {
       isCascadeMode = !isCascadeMode;
@@ -1041,15 +1085,14 @@
       } else if (currentMode === "2b2") {
         upcoming = (upcoming === RUNNING) ? TRASH : RUNNING;
       } else if (currentMode === "1b1") {
-        if (upcoming === RUNNING) {
-          upcoming = TRASH;
-          trashCount = 1;
-        } else if (trashCount < 3) {
-          upcoming = TRASH;
-          trashCount++;
-        } else {
+        // Calculate next step (1-4)
+        let nextStep = cycleStep + 1;
+        if (nextStep > 4) nextStep = 1;
+        
+        if (nextStep === runningPosition) {
           upcoming = RUNNING;
-          trashCount = 0;
+        } else {
+          upcoming = TRASH;
         }
       }
 
@@ -1068,6 +1111,7 @@
       nextEl.textContent = "Select mode & start relic";
       counterEl.textContent = counter;
       broadcastOSD();
+      updateStartRelicFor1b1();
     });
 
     /* --- HOTKEY UI LOGIC --- */
@@ -1583,6 +1627,16 @@
               else b.classList.remove('active');
             });
           }
+
+          // Load 1b1 Position
+          if (settings.oneByOnePosition) {
+            runningPosition = settings.oneByOnePosition;
+            posBtns.forEach(b => {
+              if (parseInt(b.dataset.pos) === runningPosition) b.classList.add('active');
+              else b.classList.remove('active');
+            });
+          }
+          update1b1Visibility();
           
           if (settings.voidCascadeMode) {
             isCascadeMode = true;

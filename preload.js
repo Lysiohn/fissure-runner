@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setUISettings: (settings) => ipcRenderer.send('set-ui-settings', settings),
   setRelicName: (name) => ipcRenderer.send('set-relic-name', name),
   setRotationMode: (mode) => ipcRenderer.send('set-rotation-mode', mode),
+  set1b1Position: (pos) => ipcRenderer.send('set-1b1-position', pos),
   setHydrationReminderEnabled: (enabled) => ipcRenderer.send('set-hydration-reminder-enabled', enabled),
   selectHydrationSound: () => ipcRenderer.invoke('select-hydration-sound'),
   setHydrationInterval: (minutes) => ipcRenderer.send('set-hydration-interval', minutes),

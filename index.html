@@ -1572,7 +1572,7 @@
 
     const testPopupBtn = document.getElementById('testPopupBtn');
     testPopupBtn.addEventListener('click', () => {
-      showHydrationReminder();
+      showHydrationReminder(true); // Force show for test
     });
 
     function manageHydrationTimer() {
@@ -1580,11 +1580,14 @@
       if (hydrationToggle.checked) {
         const intervalMinutes = parseInt(hydrationIntervalInput.value) || 60;
         const intervalMs = intervalMinutes * 60 * 1000;
-        if (intervalMs > 0) hydrationInterval = setInterval(showHydrationReminder, intervalMs);
+        if (intervalMs > 0) hydrationInterval = setInterval(() => showHydrationReminder(false), intervalMs);
       }
     }
 
-    function showHydrationReminder() {
+    function showHydrationReminder(isTest = false) {
+      // Only show if the toggle is checked, or if it's a forced test
+      if (!isTest && !hydrationToggle.checked) return;
+
       const popup = document.getElementById('hydrationPopup');
       popup.classList.add('show');
       playPleasantNoise();
@@ -1830,7 +1833,7 @@
 
       // --- Mission Types ---
       const railjackTypes = ['Orphix', 'Skirmish', 'Volatile'];
-      const ignoredTypes = ['Arena', 'Rush', 'Pursuit', 'Assault', 'Exterminate', 'Disruption', 'Assassination', 'Corruption'];
+      const ignoredTypes = ['Arena', 'Rush', 'Pursuit', 'Assault', 'Assassination', 'Corruption'];
       
       const normalMissions = [];
       const railjackMissions = [];
@@ -1952,8 +1955,8 @@
     const STANDARD_MISSION_TYPES = [
       'Alchemy', 'Assassination', 'Assault', 'Capture', 'Defense', 
       'Disruption', 'Excavation', 'Exterminate', 'Hijack', 'Hive', 'Interception', 
-      'Mobile Defense', 'Orphix', 'Rescue', 'Sabotage', 
-      'Skirmish', 'Spy', 'Survival', 'Volatile'
+      'Mobile Defense', 'Orphix', 'Rescue', 'Sabotage', 'Skirmish', 'Spy', 
+      'Survival', 'Volatile', 'Void Cascade', 'Void Flood'
     ];
 
     function renderFissures(fissures) {

@@ -105,6 +105,8 @@ function createWindow() {
   win.webContents.on("did-finish-load", () => {
     win.webContents.send("load-hotkey", settings.hotkey);
     broadcastScannerStatus();
+    // Check for updates after window is loaded to ensure UI listeners are ready
+    autoUpdater.checkForUpdates();
   });
 
   win.on('closed', () => {
@@ -134,14 +136,13 @@ app.whenReady().then(() => {
 
   // Check for updates on start, but don't download automatically
   autoUpdater.autoDownload = false;
-  autoUpdater.checkForUpdates();
   
   // --- Auto Updater Events ---
   autoUpdater.on('checking-for-update', () => {
     if (win) win.webContents.send('update-status', 'Checking for update...');
   });
   autoUpdater.on('update-available', (info) => {
-    if (win) win.webContents.send('update-status', 'Update available. Downloading...');
+    if (win) win.webContents.send('update-status', 'Update available.');
     if (win) win.webContents.send('update-available', info);
   });
   autoUpdater.on('update-not-available', (info) => {

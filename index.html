@@ -1958,18 +1958,21 @@
       }
     }
 
-    // Clock
-    function updateClock() {
+    // Timer & Clock Logic
+    function updateTime() {
       const now = new Date();
+      
+      // Update Clock
       const timeString = now.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' });
-      document.getElementById('clock').textContent = timeString;
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
+      const clockEl = document.getElementById('clock');
+      if (clockEl) clockEl.textContent = timeString;
 
-    // Timer Logic
-    function formatTimeLeft(expiryStr, showSeconds = true) {
-      const now = new Date();
+      // Update Timers
+      updateTimers(now);
+    }
+
+    function formatTimeLeft(expiryStr, showSeconds = true, now) {
+      if (!now) now = new Date();
       const expiry = new Date(expiryStr);
       const diff = expiry - now;
       
@@ -1984,9 +1987,8 @@
       return `${seconds}s`;
     }
 
-    function updateTimers() {
+    function updateTimers(now) {
       const timers = document.querySelectorAll('.fissure-timer');
-      const now = new Date();
       let shouldRefresh = false;
 
       timers.forEach(el => {
@@ -2012,7 +2014,7 @@
         }
 
         const isReset = el.closest('#resetTimers') !== null;
-        if (expiry) el.textContent = formatTimeLeft(expiry, !isReset);
+        if (expiry) el.textContent = formatTimeLeft(expiry, !isReset, now);
       });
 
       // Check for waiting placeholders
@@ -2024,7 +2026,8 @@
           loadFissures();
       }
     }
-    setInterval(updateTimers, 1000);
+    setInterval(updateTime, 1000);
+    updateTime();
 
     const STANDARD_MISSION_TYPES = [
       'Alchemy', 'Assassination', 'Assault', 'Capture', 'Defense', 

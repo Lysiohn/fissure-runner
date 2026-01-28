@@ -15,6 +15,8 @@ let pendingScanType = 'normal';
 let isScanning = false;
 let isScannerPaused = false;
 let worker = null;
+const MAX_READ_SIZE = 2 * 1024 * 1024; // 2MB
+const sharedLogBuffer = Buffer.alloc(MAX_READ_SIZE);
 
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
 let settings;
@@ -672,20 +674,19 @@ function checkLogUpdates() {
     if (currentSize > lastLogSize) {
       const diff = currentSize - lastLogSize;
       
-      // If diff is huge, read only the last 2MB to avoid blocking, but don't skip entirely
       let startRead = lastLogSize;
       let bytesToRead = diff;
       
-      if (diff > 2 * 1024 * 1024) { 
-        startRead = currentSize - (2 * 1024 * 1024);
-        bytesToRead = 2 * 1024 * 1024;
+      if (diff > MAX_READ_SIZE) { 
+        startRead = currentSize - MAX_READ_SIZE;
+        bytesToRead = MAX_READ_SIZE;
       }
 
-      const buffer = Buffer.alloc(bytesToRead);
       let fd;
+      let bytesRead = 0;
       try {
         fd = fs.openSync(logPath, 'r');
-        fs.readSync(fd, buffer, 0, bytesToRead, startRead);
+        bytesRead = fs.readSync(fd, sharedLogBuffer, 0, bytesToRead, startRead);
       } catch (err) {
         return; // File might be locked, try next tick
       } finally {
@@ -693,34 +694,29 @@ function checkLogUpdates() {
       }
 
       lastLogSize = currentSize;
-      const content = buffer.toString('utf8');
-      const lines = content.split(/\r?\n/);
+      const content = sharedLogBuffer.toString('utf8', 0, bytesRead);
 
-      for (const line of lines) {
-        if (settings.voidCascadeMode) {
-          // In Cascade mode, ONLY look for the relic selection timer.
-          // This prevents false "Mission Success" triggers from sub-objectives.
-          // Using "Initialize timer with duration" is more specific and avoids pre-loading triggers.
-          if (line.includes('Script [Info]: ProjectionsCountdown.lua: Initialize timer')) {
-            triggerDetection('Log (Relic Selection)', true);
-            return;
-          }
-        } else {
-          // In Normal mode, only look for the final mission success.
-          if (line.includes('Sys [Info]: Mission Success') || 
-              line.includes('MissionSummary.swf') || 
-              line.includes('LobbyMissionRewards') ||
-              line.includes('OnMissionComplete') ||
-              line.includes('EndOfMatch.lua: Mission Succeeded')) {
-            triggerDetection('Log (Mission Success)', true);
-            return;
-          }
+      // Optimization: Check content directly instead of splitting into lines
+      
+      // 1. Mission Failed (Check first for safety)
+      if (content.includes('Sys [Info]: Mission Failed')) {
+         triggerDetection('Log (Mission Failed)', false);
+         return;
+      }
+
+      if (settings.voidCascadeMode) {
+        if (content.includes('Script [Info]: ProjectionsCountdown.lua: Initialize timer')) {
+          triggerDetection('Log (Relic Selection)', true);
+          return;
         }
-
-        // Mission Failed should be checked in all modes to pause the scanner.
-        if (line.includes('Sys [Info]: Mission Failed')) {
-           triggerDetection('Log (Mission Failed)', false);
-           return;
+      } else {
+        if (content.includes('Sys [Info]: Mission Success') || 
+            content.includes('MissionSummary.swf') || 
+            content.includes('LobbyMissionRewards') ||
+            content.includes('OnMissionComplete') ||
+            content.includes('EndOfMatch.lua: Mission Succeeded')) {
+          triggerDetection('Log (Mission Success)', true);
+          return;
         }
       }
     } else if (currentSize < lastLogSize) {

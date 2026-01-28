@@ -4,3 +4,7 @@ dist-installer/
 *.exe
 *.log
 .DS_Store
+Thumbs.db
+settings.json
+out/
+# Keep package-lock.json or yarn.lock, do not ignore them.

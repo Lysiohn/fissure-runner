@@ -27,7 +27,6 @@
     .row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
     .label { color: #a1a1aa; font-weight: 700; font-size: 10px; text-transform: uppercase; min-width: 35px; }
     .value { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; flex-shrink: 1; }
-    #now { color: #10b981; }
   </style>
 </head>
 <body>
@@ -58,7 +57,10 @@
       const cycleRow = document.getElementById('cycle-row');
       const cycleInfo = document.getElementById('cycle-info');
 
-      if (nowEl) nowEl.textContent = data.now || '—';
+      if (nowEl) {
+        nowEl.textContent = data.now || '—';
+        nowEl.style.color = (data.now === "Running relic") ? "#10b981" : "#fff";
+      }
       if (nextEl) nextEl.textContent = data.next || '—';
       
       if (data.relic && data.relic.trim() !== "") {
@@ -72,7 +74,7 @@
         if (cycleRow) cycleRow.style.display = 'flex';
         if (cycleInfo) {
           cycleInfo.textContent = `${data.cycleCount} (${data.cycleState})`;
-          cycleInfo.style.color = data.cycleState === "New Cycle" ? "#10b981" : "#a1a1aa";
+          cycleInfo.style.color = (data.cycleState.includes("New Cycle")) ? "#10b981" : "#a1a1aa";
         }
       } else if (data.cycleCount > 0) {
         if (cycleRow) cycleRow.style.display = 'flex';

@@ -473,7 +473,7 @@
       align-items: center;
     }
     .reset-tier { font-weight: 600; color: #e4e4e7; width: 60px; }
-    .reset-val { display: flex; gap: 6px; }
+    .reset-val { display: flex; gap: 32px; }
 
     /* Filter Menu */
     .filter-menu {
@@ -539,7 +539,7 @@
     .fissure-item.Neo { border-color: #f87171; }
     .fissure-item.Axi { border-color: #facc15; }
     .fissure-item.Requiem { border-color: #a78bfa; }
-    .fissure-item.Omnia { border-color: #10b981; }
+    .fissure-item.Omnia { border-color: #3b82f6; }
 
     .fissure-info {
       display: flex;
@@ -552,11 +552,20 @@
       display: flex;
       align-items: center;
     }
+    .tier-icon {
+      width: 20px;
+      height: 20px;
+      margin-right: 6px;
+      object-fit: contain;
+    }
+    .tier-icon.omnia-icon {
+      filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(190deg) brightness(118%) contrast(119%);
+    }
     .sp-icon {
-      width: 14px;
-      height: 14px;
+      width: 16px;
+      height: 16px;
       margin-left: 6px;
-      fill: #ef4444;
+      object-fit: contain;
     }
     .fissure-sub {
       font-size: 0.7rem;
@@ -571,6 +580,19 @@
       background: rgba(0,0,0,0.2);
       padding: 2px 6px;
       border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .fissure-timer:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff !important;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.2);
+    }
+
+    .fissure-timer.tracked {
+      border: 1px solid #10b981;
+      color: #10b981 !important;
+      background: rgba(16, 185, 129, 0.1);
     }
 
     .settings-btn {
@@ -974,6 +996,20 @@
         <div class="divider"></div>
         <div class="label" style="margin-top: 1rem;">Support</div>
         <button id="kofiBtn" class="record-btn" style="background-color: #FF5E5B; border-color: #FF5E5B; color: white;">Support me on Ko-fi ❤️</button>
+        
+        <div class="divider"></div>
+        <button id="viewPatchNotesBtn" class="record-btn" style="margin-top: 0.5rem;">View Patch Notes (Latest)</button>
+        <div id="patchNotesContent" style="display:none; background:#121214; padding:1rem; margin-top:0.5rem; border-radius:4px; font-size:0.8rem; color:#a1a1aa; max-height:200px; overflow-y:auto; border: 1px solid #27272a;">
+            <h4 style="color:#fff; margin-top:0; margin-bottom:0.5rem;">v1.7.0 -Big Overhaul Update</h4>
+            <ul style="padding-left:1.2rem; margin:0; display:flex; flex-direction:column; gap:0.25rem;">
+                <li><strong>New Data Engine:</strong> Switched to official servers for accurate Steel Path data.</li>
+                <li><strong>Visuals:</strong> New Tier & SP icons. Distinct Blue theme for Omnia.</li>
+                <li><strong>Mission Tracking:</strong> Click any timer to track it on the OSD.</li>
+                <li><strong>Advanced Filters:</strong> Filter by difficulty (SP/Normal) and specific variants.</li>
+                <li><strong>OSD Updates:</strong> Improved color coding for "Running Relic" and "New Cycle".</li>
+                <li><strong>Fixes:</strong> Removed Railjack, fixed duplicate missions, improved timer logic.</li>
+            </ul>
+        </div>
       </div>
     </div>
   </div>
@@ -1105,6 +1141,7 @@
       }
 
       nowEl.textContent = upcoming;
+      nowEl.style.color = upcoming === RUNNING ? '#10b981' : '#fff';
       pressCount++;
 
       // Cycle Step Logic
@@ -1127,11 +1164,7 @@
       }
 
       cycleStateEl.textContent = cycleState;
-      if (cycleState === "New Cycle") {
-        cycleStateEl.style.color = '#10b981';
-      } else {
-        cycleStateEl.style.color = '#a1a1aa';
-      }
+      cycleStateEl.style.color = cycleState === "New Cycle" ? '#10b981' : '#a1a1aa';
 
       if (currentMode === "4b4") {
         upcoming = RUNNING;
@@ -1161,6 +1194,7 @@
       cycleStateEl.textContent = "";
       cycleStep = 0;
       nowEl.textContent = "—";
+      nowEl.style.color = '#fff';
       nextEl.textContent = "Select mode & start relic";
       counterEl.textContent = counter;
       broadcastOSD();
@@ -1420,12 +1454,25 @@
     // relicNameInput listener moved to debounce logic above
 
     function broadcastOSD() {
+      let stateText = cycleStateEl.textContent;
+      
+      // Append tracked mission timer to cycle state if active
+      if (trackedMission) {
+        const now = new Date();
+        const expiry = new Date(trackedMission.expiry);
+        if (expiry > now) {
+          const timeLeft = formatTimeLeft(trackedMission.expiry, true, now);
+          // Use a separator to show it alongside cycle state
+          stateText = stateText ? `${stateText} | ${timeLeft}` : timeLeft;
+        }
+      }
+
       if (window.electronAPI) window.electronAPI.updateOSD({ 
         now: nowEl.textContent, 
         next: nextEl.textContent, 
         relic: relicNameInput.value,
         cycleCount: counter,
-        cycleState: cycleStateEl.textContent
+        cycleState: stateText
       });
     }
 
@@ -1729,6 +1776,30 @@
     const filterMenuEl = document.getElementById("filterMenu");
     const resetTimersEl = document.getElementById("resetTimers");
     let lastFissuresData = [];
+
+    // Event delegation for clicking timers
+    fissureListEl.addEventListener('click', (e) => {
+      const timerEl = e.target.closest('.fissure-timer');
+      if (timerEl && timerEl.dataset.expiry && timerEl.dataset.node) {
+        const expiry = timerEl.dataset.expiry;
+        const node = timerEl.dataset.node;
+        
+        if (trackedMission && trackedMission.node === node && trackedMission.expiry === expiry) {
+          // Disable if already tracked
+          trackedMission = null;
+        } else {
+          // Enable tracking
+          trackedMission = { node, expiry };
+        }
+        
+        // Re-render to update UI classes
+        if (lastFissuresData.length > 0) renderFissures(lastFissuresData);
+        
+        // Update OSD immediately
+        broadcastOSD();
+      }
+    });
+
     let lastRenderedMissionTypes = [];
     let retryTimeout = null;
     let isFetchingFissures = false;
@@ -1738,7 +1809,7 @@
     let hiddenMissionTypes = [];
     let hiddenTiers = [];
     let hiddenResetTiers = [];
-    let showRailjack = false;
+    let hiddenVariants = [];
 
     toggleFiltersBtn.addEventListener("click", () => {
       filterMenuEl.classList.toggle("visible");
@@ -1751,7 +1822,7 @@
           hiddenMissionTypes = settings.hiddenMissionTypes || [];
           hiddenTiers = settings.hiddenTiers || [];
           hiddenResetTiers = settings.hiddenResetTiers || [];
-          showRailjack = settings.showRailjack || false;
+          hiddenVariants = settings.hiddenVariants || [];
           autoScanToggle.checked = settings.autoScanEnabled || false;
           useLogScannerToggle.checked = settings.useLogScanner || false;
           legacyScreenScannerToggle.checked = settings.enableLegacyScreenScanner || false;
@@ -1837,7 +1908,7 @@
     }
 
     function saveFilters() {
-      if (window.electronAPI) window.electronAPI.setFilters({ hiddenMissionTypes, hiddenTiers, hiddenResetTiers, showRailjack });
+      if (window.electronAPI) window.electronAPI.setFilters({ hiddenMissionTypes, hiddenTiers, hiddenResetTiers, hiddenVariants });
       loadFissures(); // Reload list to apply filters
     }
 
@@ -1845,23 +1916,6 @@
       filterMenuEl.innerHTML = "";
 
       const tiers = ['Lith', 'Meso', 'Neo', 'Axi', 'Requiem', 'Omnia'];
-
-      // --- General Settings ---
-      const generalSection = document.createElement("div");
-      generalSection.innerHTML = `<div class="filter-section-title">General</div>`;
-      const generalGrid = document.createElement("div");
-      generalGrid.className = "filter-grid";
-      
-      const rjOption = document.createElement("label");
-      rjOption.className = "filter-option";
-      rjOption.innerHTML = `<input type="checkbox" ${showRailjack ? "checked" : ""}> <span style="color: #facc15;">Show Railjack</span>`;
-      rjOption.querySelector("input").addEventListener("change", (e) => {
-          showRailjack = e.target.checked;
-          saveFilters();
-      });
-      generalGrid.appendChild(rjOption);
-      generalSection.appendChild(generalGrid);
-      filterMenuEl.appendChild(generalSection);
 
       // --- Fissure Tiers ---
       const tierSection = document.createElement("div");
@@ -1906,19 +1960,13 @@
       filterMenuEl.appendChild(resetSection);
 
       // --- Mission Types ---
-      const railjackTypes = ['Orphix', 'Skirmish', 'Volatile'];
       const ignoredTypes = ['Arena', 'Rush', 'Pursuit', 'Assault', 'Assassination', 'Corruption'];
       
       const normalMissions = [];
-      const railjackMissions = [];
       
       allMissionTypes.sort().forEach(type => {
         if (ignoredTypes.includes(type)) return;
-        if (railjackTypes.includes(type)) {
-            railjackMissions.push(type);
-        } else {
-            normalMissions.push(type);
-        }
+        normalMissions.push(type);
       });
 
       const createMissionCheckbox = (type, container) => {
@@ -1947,18 +1995,69 @@
           filterMenuEl.appendChild(missionSection);
       }
 
-      if (railjackMissions.length > 0) {
-          const rjSection = document.createElement("div");
-          rjSection.innerHTML = `<div class="filter-section-title">Railjack Missions</div>`;
-          const rjGrid = document.createElement("div");
-          rjGrid.className = "filter-grid";
-          railjackMissions.forEach(type => createMissionCheckbox(type, rjGrid));
-          rjSection.appendChild(rjGrid);
-          filterMenuEl.appendChild(rjSection);
+      // --- Advanced / Variant Filters ---
+      const variantSection = document.createElement("div");
+      variantSection.innerHTML = `<div class="filter-section-title">Advanced: Difficulty & Variants</div>`;
+      const variantGrid = document.createElement("div");
+      variantGrid.className = "filter-grid";
+
+      // Helper for variant checkboxes
+      const createVariantCheckbox = (label, key, container) => {
+        const lbl = document.createElement("label");
+        lbl.className = "filter-option";
+        const isHidden = hiddenVariants.includes(key);
+        lbl.innerHTML = `<input type="checkbox" ${!isHidden ? "checked" : ""}> ${label}`;
+        lbl.querySelector("input").addEventListener("change", (e) => {
+          if (e.target.checked) hiddenVariants = hiddenVariants.filter(k => k !== key);
+          else if (!hiddenVariants.includes(key)) hiddenVariants.push(key);
+          saveFilters();
+        });
+        container.appendChild(lbl);
+      };
+
+      // Global Difficulty
+      createVariantCheckbox("Show All Normal", "Global_Normal", variantGrid);
+      createVariantCheckbox("Show All Steel Path", "Global_SP", variantGrid);
+
+      // Specific Mission Variants (Popular ones)
+      const specificVariants = ['Void Cascade', 'Void Flood', 'Survival', 'Disruption', 'Alchemy', 'Capture', 'Exterminate'];
+      
+      specificVariants.forEach(type => {
+        // Only show if the mission type is actually available/known
+        if (allMissionTypes.includes(type)) {
+            createVariantCheckbox(`${type} (Normal)`, `${type}_Normal`, variantGrid);
+            createVariantCheckbox(`${type} (SP)`, `${type}_SP`, variantGrid);
+        }
+      });
+
+      variantSection.appendChild(variantGrid);
+      filterMenuEl.appendChild(variantSection);
+
+      // --- Omnia Specifics ---
+      // Omnia can technically be any mission, but usually specific ones. We'll list the ones present or common.
+      const omniaMissions = ['Alchemy', 'Void Cascade', 'Void Flood', 'Survival', 'Disruption'];
+      const activeOmniaTypes = allMissionTypes.filter(t => omniaMissions.includes(t));
+
+      if (activeOmniaTypes.length > 0) {
+          const omniaSection = document.createElement("div");
+          omniaSection.innerHTML = `<div class="filter-section-title">Omnia Specifics</div>`;
+          const omniaGrid = document.createElement("div");
+          omniaGrid.className = "filter-grid";
+
+          // "Show All Omnia" helper? Maybe not needed if we have per-mission.
+          // Let's just list the missions.
+          
+          activeOmniaTypes.forEach(type => {
+              createVariantCheckbox(`Omnia: ${type}`, `Omnia_${type}`, omniaGrid);
+          });
+
+          omniaSection.appendChild(omniaGrid);
+          filterMenuEl.appendChild(omniaSection);
       }
     }
 
     // Timer & Clock Logic
+    let trackedMission = null;
     function updateTime() {
       const now = new Date();
       
@@ -1969,6 +2068,16 @@
 
       // Update Timers
       updateTimers(now);
+      
+      // Check tracked mission expiry
+      if (trackedMission) {
+        const expiry = new Date(trackedMission.expiry);
+        if (now >= expiry) {
+          trackedMission = null; // Auto-disable when expired
+          if (lastFissuresData.length > 0) renderFissures(lastFissuresData); // Remove highlight
+        }
+        broadcastOSD(); // Update OSD timer every second
+      }
     }
 
     function formatTimeLeft(expiryStr, showSeconds = true, now) {
@@ -1976,13 +2085,21 @@
       const expiry = new Date(expiryStr);
       const diff = expiry - now;
       
-      if (diff <= 0) return "Expired";
+      if (diff <= 0) {
+         // Show negative time for expired items (indicates clock desync or stale data)
+         const absDiff = Math.abs(diff);
+         const hours = Math.floor(absDiff / 3600000);
+         const minutes = Math.floor((absDiff % 3600000) / 60000);
+         const seconds = Math.floor((absDiff % 60000) / 1000);
+         
+         return `-${hours > 0 ? hours + 'h ' : ''}${minutes}m ${seconds}s`;
+      }
       
       const hours = Math.floor(diff / 3600000);
       const minutes = Math.floor((diff % 3600000) / 60000);
       const seconds = Math.floor((diff % 60000) / 1000);
       
-      if (hours > 0) return showSeconds ? `${hours}h ${minutes}m ${seconds}s` : `${hours}h ${minutes}m`;
+      if (hours > 0) return `${hours}h ${minutes}m`;
       if (minutes > 0) return showSeconds ? `${minutes}m ${seconds}s` : `${minutes}m`;
       return `${seconds}s`;
     }
@@ -2002,6 +2119,10 @@
             if (now > resetDate) {
                 expiry = el.dataset.hardExpiry;
                 el.style.color = '#f87171'; // Red to indicate ending
+                
+                // If hard expiry is also passed (negative diff), keep it red
+                const hardDiff = new Date(expiry) - now;
+                if (hardDiff < 0) el.style.color = '#ef4444'; 
 
                 // Dynamic Polling:
                 // If in "Red Zone" (Reset passed, Hard not reached), poll every 15s to catch early updates
@@ -2015,6 +2136,10 @@
 
         const isReset = el.closest('#resetTimers') !== null;
         if (expiry) el.textContent = formatTimeLeft(expiry, !isReset, now);
+        
+        // Color expired items red in the main list too
+        if (!isReset && new Date(expiry) < now) el.style.color = '#ef4444';
+        else if (!isReset) el.style.color = '#a1a1aa';
       });
 
       // Check for waiting placeholders
@@ -2032,9 +2157,19 @@
     const STANDARD_MISSION_TYPES = [
       'Alchemy', 'Assassination', 'Assault', 'Capture', 'Defense', 
       'Disruption', 'Excavation', 'Exterminate', 'Hijack', 'Hive', 'Interception', 
-      'Mobile Defense', 'Orphix', 'Rescue', 'Sabotage', 'Skirmish', 'Spy', 
-      'Survival', 'Volatile', 'Void Cascade', 'Void Flood'
+      'Mobile Defense', 'Rescue', 'Sabotage', 'Spy', 
+      'Survival', 'Void Cascade', 'Void Flood'
     ];
+
+    const TIER_ICONS = {
+      'Lith': 'https://cdn.discordapp.com/emojis/780453137588551720.webp',
+      'Meso': 'https://cdn.discordapp.com/emojis/780453137739022357.webp',
+      'Neo': 'https://cdn.discordapp.com/emojis/780453137675714630.webp',
+      'Axi': 'https://cdn.discordapp.com/emojis/780453137291018271.webp',
+      'Requiem': 'https://cdn.discordapp.com/emojis/1043330972642447500.webp',
+      'Omnia': 'https://static.wikia.nocookie.net/warframe/images/5/57/VoidTearIcon_b.png'
+    };
+    const SP_ICON_URL = "https://static.wikia.nocookie.net/warframe/images/1/10/SteelEssence.png";
 
     function renderFissures(fissures) {
         const now = new Date();
@@ -2044,7 +2179,12 @@
             if (f.missionType === 'Extermination') f.missionType = 'Exterminate';
         });
 
-        const activeFissures = fissures.filter(f => new Date(f.expiry) > now);
+        // Trust API data, but filter out items that are extremely old (> 3 hours) 
+        // to prevent garbage data from sticking around forever.
+        const activeFissures = fissures.filter(f => {
+            const diff = new Date(f.expiry) - now;
+            return diff > -10800000; // -3 hours
+        });
         
         // Collect all mission types (Standard + any new ones from active fissures)
         const activeTypes = activeFissures.map(f => f.missionType).filter(Boolean);
@@ -2096,7 +2236,12 @@
                 row.className = 'reset-row';
                 let html = `<span class="reset-tier">${tier}</span><div class="reset-val">`;
                 
-                const generateTimerHtml = (label, data) => {
+                const tierIconUrl = TIER_ICONS[tier];
+                const isOmnia = tier === 'Omnia';
+                const tierImg = tierIconUrl ? `<img src="${tierIconUrl}" class="tier-icon${isOmnia ? ' omnia-icon' : ''}" style="width:16px;height:16px;margin-right:2px;">` : '';
+                const spImg = `<img src="${SP_ICON_URL}" class="sp-icon" style="width:14px;height:14px;margin-left:0;margin-right:2px;">`;
+
+                const generateTimerHtml = (iconHtml, data) => {
                     if (!data) return '';
                     let target = data.reset;
                     let style = '';
@@ -2104,11 +2249,11 @@
                         target = data.hard;
                         style = 'color:#f87171;';
                     }
-                    return `<span>${label}: <span class="fissure-timer" style="background:transparent; padding:0; ${style}" data-expiry="${data.reset.toISOString()}" data-reset="${data.reset.toISOString()}" data-hard-expiry="${data.hard.toISOString()}">${formatTimeLeft(target, false)}</span></span>`;
+                    return `<span style="display:flex;align-items:center;">${iconHtml}<span class="fissure-timer" style="background:transparent; padding:0; margin-left:4px; ${style}" data-expiry="${data.reset.toISOString()}" data-reset="${data.reset.toISOString()}" data-hard-expiry="${data.hard.toISOString()}">${formatTimeLeft(target, false)}</span></span>`;
                 };
 
-                if (normalData) html += generateTimerHtml('N', normalData);
-                if (spData) html += generateTimerHtml('SP', spData);
+                if (normalData) html += generateTimerHtml(tierImg, normalData);
+                if (spData) html += generateTimerHtml(spImg + tierImg, spData);
                 
                 html += `</div>`;
                 row.innerHTML = html;
@@ -2119,9 +2264,22 @@
         // Filter logic
         const displayFissures = activeFissures.filter(f => {
           if (!f.tier) return false; // Basic validity check
-          if (f.isStorm && !showRailjack) return false; // Railjack filter (default hidden)
+          if (f.isStorm) return false; // Railjack filter (Always hidden)
           if (hiddenMissionTypes.includes(f.missionType)) return false; // User hidden types
           if (hiddenTiers.includes(f.tier)) return false; // User hidden tiers
+
+          // --- Advanced Variant Filters ---
+          // 1. Global Difficulty
+          if (!f.isHard && hiddenVariants.includes('Global_Normal')) return false;
+          if (f.isHard && hiddenVariants.includes('Global_SP')) return false;
+
+          // 2. Specific Mission Variants (e.g. "Void Cascade_SP")
+          const variantKey = `${f.missionType}_${f.isHard ? 'SP' : 'Normal'}`;
+          if (hiddenVariants.includes(variantKey)) return false;
+
+          // 3. Omnia Specifics (e.g. "Omnia_Survival")
+          if (f.tier === 'Omnia' && hiddenVariants.includes(`Omnia_${f.missionType}`)) return false;
+
           return true;
         });
         
@@ -2160,14 +2318,23 @@
               const item = document.createElement("div");
               item.className = `fissure-item ${f.tier}`;
               
-              const spIcon = f.isHard ? `<svg class="sp-icon" viewBox="0 0 24 24" title="Steel Path"><path d="M12,2 L2,12 L12,22 L22,12 L12,2 Z M12,6 L18,12 L12,18 L6,12 L12,6 Z"/></svg>` : '';
+              const tierIconUrl = TIER_ICONS[f.tier];
+              const isOmnia = f.tier === 'Omnia';
+              const tierImg = tierIconUrl ? `<img src="${tierIconUrl}" class="tier-icon${isOmnia ? ' omnia-icon' : ''}">` : '';
+              const spIcon = f.isHard ? `<img src="${SP_ICON_URL}" class="sp-icon" title="Steel Path">` : '';
+              
+              const isExpired = new Date(f.expiry) < now;
+              const timerColor = isExpired ? 'color: #ef4444;' : '';
+              
+              const isTracked = trackedMission && trackedMission.node === f.node && trackedMission.expiry === f.expiry;
+              const trackedClass = isTracked ? 'tracked' : '';
 
               item.innerHTML = `
                 <div class="fissure-info">
-                  <span class="fissure-main">${f.missionType}${spIcon}</span>
+                  <span class="fissure-main">${tierImg}${f.missionType}${spIcon}</span>
                   <span class="fissure-sub">${f.node} • ${f.enemy}</span>
                 </div>
-                <div class="fissure-timer" data-expiry="${f.expiry}">${formatTimeLeft(f.expiry)}</div>
+                <div class="fissure-timer ${trackedClass}" style="${timerColor}; cursor: pointer;" data-expiry="${f.expiry}" data-node="${f.node}" title="Click to track on OSD">${formatTimeLeft(f.expiry)}</div>
               `;
               groupDiv.appendChild(item);
             });
@@ -2240,6 +2407,12 @@
     const checkForUpdateBtn = document.getElementById('checkForUpdateBtn');
     const updateStatusEl = document.getElementById('updateStatus');
     const kofiBtn = document.getElementById('kofiBtn');
+    const viewPatchNotesBtn = document.getElementById('viewPatchNotesBtn');
+    const patchNotesContent = document.getElementById('patchNotesContent');
+
+    viewPatchNotesBtn.addEventListener('click', () => {
+        patchNotesContent.style.display = patchNotesContent.style.display === 'none' ? 'block' : 'none';
+    });
 
     checkForUpdateBtn.addEventListener('click', () => {
       if (window.electronAPI) window.electronAPI.checkForUpdate();

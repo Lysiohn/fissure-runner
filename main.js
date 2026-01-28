@@ -48,7 +48,7 @@ try {
 if (!settings.hiddenMissionTypes) settings.hiddenMissionTypes = [];
 if (!settings.hiddenTiers) settings.hiddenTiers = [];
 if (!settings.hiddenResetTiers) settings.hiddenResetTiers = [];
-if (typeof settings.showRailjack === 'undefined') settings.showRailjack = false;
+if (!settings.hiddenVariants) settings.hiddenVariants = [];
 if (!settings.scanArea) settings.scanArea = null;
 if (!settings.voidCascadeScanArea) settings.voidCascadeScanArea = null;
 if (typeof settings.autoScanEnabled === 'undefined') settings.autoScanEnabled = false;
@@ -254,7 +254,7 @@ ipcMain.on("set-filters", (event, data) => {
   settings.hiddenMissionTypes = data.hiddenMissionTypes;
   settings.hiddenTiers = data.hiddenTiers;
   settings.hiddenResetTiers = data.hiddenResetTiers;
-  settings.showRailjack = data.showRailjack;
+  settings.hiddenVariants = data.hiddenVariants;
   saveSettings();
 });
 
@@ -772,26 +772,104 @@ function startAutoScanner() {
   }
 }
 
+let solNodeCache = null;
+const TIER_MAPPING = {
+  'VoidT1': 'Lith',
+  'VoidT2': 'Meso',
+  'VoidT3': 'Neo',
+  'VoidT4': 'Axi',
+  'VoidT5': 'Requiem',
+  'VoidT6': 'Omnia'
+};
+
+async function getSolNodes() {
+  if (solNodeCache) return solNodeCache;
+  try {
+    const res = await fetch('https://raw.githubusercontent.com/WFCD/warframe-worldstate-data/master/data/solNodes.json');
+    if (res.ok) {
+      solNodeCache = await res.json();
+      return solNodeCache;
+    }
+  } catch (e) { console.error("Failed to fetch solNodes:", e); }
+  return {};
+}
+
 ipcMain.handle("get-fissures", async () => {
   // Helper function for fetching
   const fetchData = async (url) => {
-    const response = await fetch(url, {
-      headers: { "User-Agent": "FissureRunner", "Accept": "application/json" }
+    // Add timestamp to prevent caching
+    const separator = url.includes('?') ? '&' : '?';
+    const bustedUrl = `${url}${separator}t=${Date.now()}`;
+
+    const response = await fetch(bustedUrl, {
+      headers: { 
+        "User-Agent": "FissureRunner", 
+        "Accept": "application/json",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache"
+      }
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
   };
 
-  // 1. Try specific fissures endpoint (2 attempts)
+  // 1. Try Official Raw Endpoint (api.warframe.com)
+  try {
+    console.log("[API] Attempting official raw endpoint (content.warframe.com)...");
+    // Use content.warframe.com directly to avoid 409 errors from cache-busting params on the CDN
+    const rawResponse = await fetch('https://content.warframe.com/dynamic/worldState.php', { 
+      headers: { 
+        "User-Agent": "FissureRunner",
+        "Cache-Control": "no-cache"
+      } 
+    });
+    if (!rawResponse.ok) throw new Error(`HTTP ${rawResponse.status}`);
+    const rawData = await rawResponse.json();
+    const solNodes = await getSolNodes();
+    const fissures = [];
+
+    // Parse ActiveMissions (Normal Fissures)
+    if (rawData.ActiveMissions) {
+      rawData.ActiveMissions.forEach(m => {
+        const tier = TIER_MAPPING[m.Modifier];
+        if (!tier) return;
+        
+        const nodeData = solNodes[m.Node] || { value: m.Node, type: 'Unknown', enemy: 'Unknown' };
+        // Handle MongoDB extended JSON date format
+        const expiryMs = m.Expiry && m.Expiry.$date ? (m.Expiry.$date.$numberLong || m.Expiry.$date) : Date.now();
+        const expiry = new Date(parseInt(expiryMs)).toISOString();
+        
+        const fissure = {
+          node: nodeData.value,
+          missionType: nodeData.type,
+          enemy: nodeData.enemy,
+          tier: tier,
+          tierNum: parseInt(m.Modifier.replace('VoidT', '')),
+          expiry: expiry,
+          isHard: m.Hard || false, // Use the 'Hard' property from the raw data
+          isStorm: false
+        };
+        fissures.push(fissure);
+      });
+    }
+
+    if (fissures.length > 0) return fissures;
+    throw new Error("Raw endpoint returned no fissures.");
+  } catch (e) {
+    console.warn(`[API] Raw endpoint failed: ${e.message}. Trying fallbacks...`);
+  }
+
+  // 2. Try specific fissures endpoint (2 attempts)
   for (let i = 0; i < 2; i++) {
     try {
       return await fetchData('https://api.warframestat.us/pc/fissures');
     } catch (e) {
+      console.warn(`[API] Official fissures endpoint failed (attempt ${i+1}): ${e.message}`);
       await new Promise(r => setTimeout(r, 1000));
     }
   }
 
-  // 2. Try fallback to full worldstate (1 attempt)
+  // 3. Try fallback to full worldstate (1 attempt)
   try {
     console.log("[API] Primary endpoint failed (502/Network). Attempting fallback to worldstate...");
     const data = await fetchData('https://api.warframestat.us/pc');
@@ -800,11 +878,38 @@ ipcMain.handle("get-fissures", async () => {
     // Continue to proxy
   }
 
-  // 3. Try Proxy Fallback (New)
+  // 4. Try Proxy Fallback 1 (allorigins)
   try {
-    console.log("[API] Direct connection failed. Attempting via backup proxy...");
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://api.warframestat.us/pc/fissures')}`;
-    const response = await fetch(proxyUrl);
+    console.log("[API] Direct connection failed. Attempting via backup proxy 1 (allorigins)...");
+    // Add timestamp to target URL to bust upstream cache
+    const targetUrl = `https://api.warframestat.us/pc/fissures?t=${Date.now()}`;
+    // Add timestamp to proxy URL to bust local/proxy cache
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}&rand=${Date.now()}`;
+    const response = await fetch(proxyUrl, { headers: { "Cache-Control": "no-cache" } });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+
+    // Sanity check: if data is old, throw error to try next proxy
+    if (Array.isArray(data) && data.length > 0) {
+      const maxExpiry = data.reduce((max, f) => {
+        const fExpiry = new Date(f.expiry).getTime();
+        return fExpiry > max ? fExpiry : max;
+      }, 0);
+      // If the latest fissure expired more than 1 hour ago, data is likely stale.
+      if (Date.now() - maxExpiry > 3600000) { // 1 hour in ms
+        throw new Error("Proxy 1 returned stale data (latest fissure expired >1hr ago).");
+      }
+    }
+    return data;
+  } catch (e) {
+    console.warn(`[API] Proxy 1 failed: ${e.message}. Trying next proxy.`);
+  }
+
+  // 5. Try Proxy Fallback 2 (bridged.cc)
+  try {
+    console.log("[API] Attempting via backup proxy 2 (cors.bridged.cc)...");
+    const proxyUrl = `https://cors.bridged.cc/https://api.warframestat.us/pc/fissures?t=${Date.now()}`;
+    const response = await fetch(proxyUrl, { headers: { "Cache-Control": "no-cache" } });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
   } catch (e) {

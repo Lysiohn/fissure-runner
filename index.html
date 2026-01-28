@@ -1000,7 +1000,7 @@
         <div class="divider"></div>
         <button id="viewPatchNotesBtn" class="record-btn" style="margin-top: 0.5rem;">View Patch Notes (Latest)</button>
         <div id="patchNotesContent" style="display:none; background:#121214; padding:1rem; margin-top:0.5rem; border-radius:4px; font-size:0.8rem; color:#a1a1aa; max-height:200px; overflow-y:auto; border: 1px solid #27272a;">
-            <h4 style="color:#fff; margin-top:0; margin-bottom:0.5rem;">v1.7.0 -Big Overhaul Update</h4>
+            <h4 style="color:#fff; margin-top:0; margin-bottom:0.5rem;">v1.7.1 -Big Overhaul Update</h4>
             <ul style="padding-left:1.2rem; margin:0; display:flex; flex-direction:column; gap:0.25rem;">
                 <li><strong>New Data Engine:</strong> Switched to official servers for accurate Steel Path data.</li>
                 <li><strong>Visuals:</strong> New Tier & SP icons. Distinct Blue theme for Omnia.</li>
@@ -2035,8 +2035,7 @@
 
       // --- Omnia Specifics ---
       // Omnia can technically be any mission, but usually specific ones. We'll list the ones present or common.
-      const omniaMissions = ['Alchemy', 'Void Cascade', 'Void Flood', 'Survival', 'Disruption'];
-      const activeOmniaTypes = allMissionTypes.filter(t => omniaMissions.includes(t));
+      const activeOmniaTypes = allMissionTypes.filter(t => OMNIA_MISSION_TYPES.includes(t));
 
       if (activeOmniaTypes.length > 0) {
           const omniaSection = document.createElement("div");
@@ -2161,6 +2160,7 @@
       'Survival', 'Void Cascade', 'Void Flood'
     ];
 
+    const OMNIA_MISSION_TYPES = ['Alchemy', 'Void Cascade', 'Void Flood', 'Survival', 'Disruption'];
     const TIER_ICONS = {
       'Lith': 'https://cdn.discordapp.com/emojis/780453137588551720.webp',
       'Meso': 'https://cdn.discordapp.com/emojis/780453137739022357.webp',
@@ -2265,7 +2265,12 @@
         const displayFissures = activeFissures.filter(f => {
           if (!f.tier) return false; // Basic validity check
           if (f.isStorm) return false; // Railjack filter (Always hidden)
-          if (hiddenMissionTypes.includes(f.missionType)) return false; // User hidden types
+          
+          if (hiddenMissionTypes.includes(f.missionType)) {
+             // Exempt Omnia missions if they are controlled by specific filters
+             if (!(f.tier === 'Omnia' && OMNIA_MISSION_TYPES.includes(f.missionType))) return false;
+          }
+          
           if (hiddenTiers.includes(f.tier)) return false; // User hidden tiers
 
           // --- Advanced Variant Filters ---

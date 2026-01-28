@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onMissionCompleteDetected: (callback) => ipcRenderer.on('mission-complete-detected', callback),
   onScannerStatusUpdate: (callback) => ipcRenderer.on('scanner-status-update', callback),
   toggleAutoScan: (enabled) => ipcRenderer.send('toggle-auto-scan', enabled),
+  setLogScannerMode: (enabled) => ipcRenderer.send('set-log-scanner-mode', enabled),
   setAutoScanPause: (seconds) => ipcRenderer.send('set-auto-scan-pause', seconds),
   setScanInterval: (type, seconds) => ipcRenderer.send('set-scan-interval', { type, seconds }),
   setOSDEnabled: (enabled) => ipcRenderer.send('set-osd-enabled', enabled),
@@ -39,6 +40,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   quitAndInstall: () => ipcRenderer.send('quit-and-install'),
   onResyncScannerState: (callback) => ipcRenderer.on('resync-scanner-state', callback),
   testScanner: () => ipcRenderer.invoke('test-scanner'),
+  testLogReader: () => ipcRenderer.invoke('test-log-reader'),
   setVoidCascadeMode: (enabled) => ipcRenderer.send('set-void-cascade-mode', enabled),
-  setHotkeyEnabled: (enabled) => ipcRenderer.send('set-hotkey-enabled', enabled)
+  setHotkeyEnabled: (enabled) => ipcRenderer.send('set-hotkey-enabled', enabled),
+  setLegacyScreenScanner: (enabled) => ipcRenderer.send('set-legacy-screen-scanner', enabled)
 });

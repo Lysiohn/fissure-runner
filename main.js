@@ -8,6 +8,9 @@ let win;
 let osdWin;
 let scannerWin;
 let autoScanInterval = null;
+let logCheckInterval = null;
+const logPath = path.join(process.env.LOCALAPPDATA, "Warframe", "EE.log");
+let lastLogSize = 0;
 let pendingScanType = 'normal';
 let isScanning = false;
 let isScannerPaused = false;
@@ -47,6 +50,8 @@ if (typeof settings.showRailjack === 'undefined') settings.showRailjack = false;
 if (!settings.scanArea) settings.scanArea = null;
 if (!settings.voidCascadeScanArea) settings.voidCascadeScanArea = null;
 if (typeof settings.autoScanEnabled === 'undefined') settings.autoScanEnabled = false;
+if (typeof settings.useLogScanner === 'undefined') settings.useLogScanner = true;
+if (typeof settings.enableLegacyScreenScanner === 'undefined') settings.enableLegacyScreenScanner = false;
 if (typeof settings.autoScanPause === 'undefined') settings.autoScanPause = 30;
 if (typeof settings.scanIntervalNormal === 'undefined') settings.scanIntervalNormal = 10;
 if (typeof settings.scanIntervalCascade === 'undefined') settings.scanIntervalCascade = 5;
@@ -310,6 +315,21 @@ ipcMain.on('toggle-auto-scan', (event, enabled) => {
   broadcastScannerStatus();
 });
 
+ipcMain.on('set-log-scanner-mode', (event, enabled) => {
+  settings.useLogScanner = enabled;
+  saveSettings();
+  if (settings.autoScanEnabled) {
+    startAutoScanner(); // Restart to switch modes
+  }
+});
+
+ipcMain.on('set-legacy-screen-scanner', (event, enabled) => {
+  settings.enableLegacyScreenScanner = enabled;
+  saveSettings();
+  // Restart scanner to apply mode change if active
+  if (settings.autoScanEnabled) startAutoScanner();
+});
+
 ipcMain.on('set-auto-scan-pause', (event, seconds) => {
   settings.autoScanPause = seconds;
   saveSettings();
@@ -394,7 +414,7 @@ ipcMain.on('update-osd', (event, data) => {
     }
     const isRunning = data.now && data.now !== '—' && data.now.trim() !== '';
     if (isRunning) {
-      if (!autoScanInterval) startAutoScanner();
+      if (!autoScanInterval && !logCheckInterval) startAutoScanner();
     } else {
       stopAutoScanner();
     }
@@ -464,7 +484,7 @@ function broadcastScannerStatus() {
   if (settings.autoScanEnabled) {
     if (isScannerPaused) {
       status = 'paused';
-    } else if (autoScanInterval) {
+    } else if (autoScanInterval || logCheckInterval) {
       status = 'active';
     } else {
       status = 'idle';
@@ -476,6 +496,10 @@ function broadcastScannerStatus() {
 function stopAutoScanner() {
   if (autoScanInterval) clearInterval(autoScanInterval);
   autoScanInterval = null;
+
+  if (logCheckInterval) clearInterval(logCheckInterval);
+  logCheckInterval = null;
+
   broadcastScannerStatus();
 }
 
@@ -544,18 +568,7 @@ async function scanScreen() {
     }
 
     if (detected) {      
-      stopAutoScanner();
-      isScannerPaused = true;
-      broadcastScannerStatus();
-      console.log(`Target detected. Pausing scanner for ${settings.autoScanPause} seconds.`);
-      win.webContents.send('mission-complete-detected', settings.autoScanPause);
-      setTimeout(() => {
-        isScannerPaused = false;
-        console.log('Scanner pause finished. Will resume if a run is active.');
-        broadcastScannerStatus();
-        // Trigger a check to see if we should start scanning now
-        if (win) win.webContents.send('resync-scanner-state');
-      }, settings.autoScanPause * 1000);
+      triggerDetection('Visual Scanner', true);
     }
   } catch (error) {
     console.error('Auto-scan error:', error);
@@ -607,28 +620,200 @@ ipcMain.handle('test-scanner', async () => {
   };
 });
 
+ipcMain.handle('test-log-reader', async () => {
+  try {
+    if (!fs.existsSync(logPath)) return { success: false, message: "EE.log not found at " + logPath };
+    
+    const stats = fs.statSync(logPath);
+    const readSize = Math.min(stats.size, 1024 * 20); // Read last 20KB
+    const buffer = Buffer.alloc(readSize);
+    let fd = fs.openSync(logPath, 'r');
+    fs.readSync(fd, buffer, 0, readSize, stats.size - readSize);
+    fs.closeSync(fd);
+    
+    const content = buffer.toString('utf8');
+    const lines = content.split(/\r?\n/).filter(l => l.trim() !== '').slice(-15);
+    
+    const found = [];
+    // Check the whole content for matches to report "Found in last 20KB"
+    const allLines = content.split(/\r?\n/);
+    for (const line of allLines) {
+        if (line.includes('Sys [Info]: Mission Success') || 
+            line.includes('MissionSummary.swf') || 
+            line.includes('LobbyMissionRewards') ||
+            line.includes('OnMissionComplete') ||
+            line.includes('EndOfMatch.lua: Mission Succeeded')) {
+           if (!found.includes('Mission Success')) found.push('Mission Success');
+        }
+
+        if (line.includes('Script [Info]: ProjectionsCountdown.lua: Initialize timer')) {
+           if (!found.includes('Relic Selection')) found.push('Relic Selection');
+        }
+    }
+    
+    if (found.length > 0) lines.unshift(`--- DEBUG: Found VALID triggers in last 20KB: ${found.join(', ')} ---`);
+    else lines.unshift(`--- DEBUG: No VALID triggers found in last 20KB ---`);
+
+    return { success: true, lines: lines, path: logPath };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+});
+
+function checkLogUpdates() {
+  if (isScannerPaused) return;
+  
+  try {
+    if (!fs.existsSync(logPath)) return;
+
+    const stats = fs.statSync(logPath);
+    const currentSize = stats.size;
+
+    if (currentSize > lastLogSize) {
+      const diff = currentSize - lastLogSize;
+      
+      // If diff is huge, read only the last 2MB to avoid blocking, but don't skip entirely
+      let startRead = lastLogSize;
+      let bytesToRead = diff;
+      
+      if (diff > 2 * 1024 * 1024) { 
+        startRead = currentSize - (2 * 1024 * 1024);
+        bytesToRead = 2 * 1024 * 1024;
+      }
+
+      const buffer = Buffer.alloc(bytesToRead);
+      let fd;
+      try {
+        fd = fs.openSync(logPath, 'r');
+        fs.readSync(fd, buffer, 0, bytesToRead, startRead);
+      } catch (err) {
+        return; // File might be locked, try next tick
+      } finally {
+        if (fd) fs.closeSync(fd);
+      }
+
+      lastLogSize = currentSize;
+      const content = buffer.toString('utf8');
+      const lines = content.split(/\r?\n/);
+
+      for (const line of lines) {
+        if (settings.voidCascadeMode) {
+          // In Cascade mode, ONLY look for the relic selection timer.
+          // This prevents false "Mission Success" triggers from sub-objectives.
+          // Using "Initialize timer with duration" is more specific and avoids pre-loading triggers.
+          if (line.includes('Script [Info]: ProjectionsCountdown.lua: Initialize timer')) {
+            triggerDetection('Log (Relic Selection)', true);
+            return;
+          }
+        } else {
+          // In Normal mode, only look for the final mission success.
+          if (line.includes('Sys [Info]: Mission Success') || 
+              line.includes('MissionSummary.swf') || 
+              line.includes('LobbyMissionRewards') ||
+              line.includes('OnMissionComplete') ||
+              line.includes('EndOfMatch.lua: Mission Succeeded')) {
+            triggerDetection('Log (Mission Success)', true);
+            return;
+          }
+        }
+
+        // Mission Failed should be checked in all modes to pause the scanner.
+        if (line.includes('Sys [Info]: Mission Failed')) {
+           triggerDetection('Log (Mission Failed)', false);
+           return;
+        }
+      }
+    } else if (currentSize < lastLogSize) {
+      // File truncated (game restart), reset pointer
+      lastLogSize = currentSize;
+    }
+  } catch (e) { console.error("Log read error:", e); }
+}
+
+function triggerDetection(source, isSuccess = true) {
+  stopAutoScanner();
+  isScannerPaused = true;
+  broadcastScannerStatus();
+  console.log(`Target detected via ${source}. Pausing for ${settings.autoScanPause}s.`);
+  if (isSuccess) {
+    win.webContents.send('mission-complete-detected', settings.autoScanPause);
+  }
+  setTimeout(() => {
+    isScannerPaused = false;
+    console.log('Pause finished.');
+    broadcastScannerStatus();
+    if (win) win.webContents.send('resync-scanner-state');
+  }, settings.autoScanPause * 1000);
+}
+
 function startAutoScanner() {
   stopAutoScanner();
-  const currentArea = settings.voidCascadeMode ? settings.voidCascadeScanArea : settings.scanArea;
-  if (currentArea) {
-    const interval = settings.voidCascadeMode 
-      ? (settings.scanIntervalCascade * 1000) 
-      : (settings.scanIntervalNormal * 1000);
-    autoScanInterval = setInterval(scanScreen, interval);
-    broadcastScannerStatus();
+  
+  // Use Log Scanner if enabled OR if Legacy Screen Scanner is disabled (forcing standard mode)
+  const useLog = settings.useLogScanner || !settings.enableLegacyScreenScanner;
+
+  if (useLog) {
+    // --- LOG MODE ---
+    if (fs.existsSync(logPath)) {
+      const stats = fs.statSync(logPath);
+      lastLogSize = stats.size; // Start reading from NOW
+      logCheckInterval = setInterval(checkLogUpdates, 1000); // Check every 1s
+      broadcastScannerStatus();
+      console.log("Started Log Scanner.");
+    } else {
+      console.error("EE.log not found at", logPath);
+    }
+  } else {
+    // --- VISUAL MODE ---
+    const currentArea = settings.voidCascadeMode ? settings.voidCascadeScanArea : settings.scanArea;
+    if (currentArea) {
+      const interval = settings.voidCascadeMode 
+        ? (settings.scanIntervalCascade * 1000) 
+        : (settings.scanIntervalNormal * 1000);
+      autoScanInterval = setInterval(scanScreen, interval);
+      broadcastScannerStatus();
+    }
   }
 }
 
 ipcMain.handle("get-fissures", async () => {
-  try {
-    const response = await fetch(`https://api.warframestat.us/pc/fissures?t=${Date.now()}`, {
-      headers: { "User-Agent": "FissureRunner" }
+  // Helper function for fetching
+  const fetchData = async (url) => {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "FissureRunner", "Accept": "application/json" }
     });
-    if (!response.ok) throw new Error("Network response was not ok");
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json();
-  } catch (error) {
-    console.error("Failed to fetch fissures:", error);
-    throw error;
+  };
+
+  // 1. Try specific fissures endpoint (2 attempts)
+  for (let i = 0; i < 2; i++) {
+    try {
+      return await fetchData('https://api.warframestat.us/pc/fissures');
+    } catch (e) {
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+
+  // 2. Try fallback to full worldstate (1 attempt)
+  try {
+    console.log("[API] Primary endpoint failed (502/Network). Attempting fallback to worldstate...");
+    const data = await fetchData('https://api.warframestat.us/pc');
+    return data.fissures || [];
+  } catch (e) {
+    // Continue to proxy
+  }
+
+  // 3. Try Proxy Fallback (New)
+  try {
+    console.log("[API] Direct connection failed. Attempting via backup proxy...");
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://api.warframestat.us/pc/fissures')}`;
+    const response = await fetch(proxyUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  } catch (e) {
+    console.warn(`[API] All fetch attempts failed. Last error: ${e.message}`);
+    return null;
   }
 });
 

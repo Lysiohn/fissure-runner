@@ -806,29 +806,40 @@
               <label for="scanPauseInput">Pause (seconds)</label>
               <input type="number" id="scanPauseInput" min="5" value="30" />
             </div>
-            <div class="scanner-row">
-              <label for="scanIntervalNormalInput">Normal Interval (s)</label>
-              <input type="number" id="scanIntervalNormalInput" min="1" value="10" style="width: 50px; background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px; text-align: center;" />
-            </div>
-            <div class="scanner-row">
-              <label for="scanIntervalCascadeInput">Cascade Interval (s)</label>
-              <input type="number" id="scanIntervalCascadeInput" min="1" value="5" style="width: 50px; background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px; text-align: center;" />
-            </div>
-            <button id="setScanAreaBtn">Set Normal Scan Area</button>
-            <button id="setVoidCascadeAreaBtn" class="record-btn" style="margin-top: 0.5rem;">Set Void Cascade Area</button>
-            <div id="scanAreaDisplay">No area set.</div>
-            <div class="scanner-row" style="margin-top: 0.5rem;">
-              <label for="showScannerPreviewToggle" style="cursor: pointer;">Show Scanner Preview Button</label>
-              <input type="checkbox" id="showScannerPreviewToggle" style="cursor: pointer;" />
-            </div>
-            <button id="testScannerBtn" class="record-btn" style="margin-top: 0.5rem; border-color: #eab308; color: #eab308;">Test Scanner (Preview)</button>
-            <div id="scannerPreview" style="margin-top: 0.5rem; display: none; flex-direction: column; gap: 0.5rem;">
-              <div style="font-size: 0.8rem; color: #a1a1aa;">Raw Text:</div>
-              <div id="scannerRawText" style="font-family: monospace; background: #000; padding: 0.5rem; border-radius: 4px; color: #fff; font-size: 0.8rem; word-break: break-all;"></div>
-              <div style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.25rem;">Processed Text:</div>
-              <div id="scannerProcessedText" style="font-family: monospace; background: #000; padding: 0.5rem; border-radius: 4px; color: #eab308; font-size: 0.8rem; word-break: break-all;"></div>
-              <div id="scannerMatchStatus" style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.25rem; font-weight: bold; text-align: center;"></div>
-              <img id="scannerSnapshot" style="width: 100%; border: 1px solid #3f3f46; border-radius: 4px;" />
+
+            <!-- Legacy Screen Scanner Wrapper -->
+            <div id="legacyScannerWrapper" style="display: none; border-top: 1px solid #27272a; margin-top: 0.5rem; padding-top: 0.5rem;">
+              <div class="scanner-row">
+                <label for="useLogScannerToggle" style="cursor: pointer; color: #60a5fa;">Use Log Reader (EE.log)</label>
+                <input type="checkbox" id="useLogScannerToggle" style="cursor: pointer;" />
+              </div>
+              
+              <div id="visualScannerControls">
+                <div class="scanner-row">
+                  <label for="scanIntervalNormalInput">Normal Interval (s)</label>
+                  <input type="number" id="scanIntervalNormalInput" min="1" value="10" style="width: 50px; background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px; text-align: center;" />
+                </div>
+                <div class="scanner-row">
+                  <label for="scanIntervalCascadeInput">Cascade Interval (s)</label>
+                  <input type="number" id="scanIntervalCascadeInput" min="1" value="5" style="width: 50px; background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px; text-align: center;" />
+                </div>
+                <button id="setScanAreaBtn">Set Normal Scan Area</button>
+                <button id="setVoidCascadeAreaBtn" class="record-btn" style="margin-top: 0.5rem;">Set Void Cascade Area</button>
+                <div id="scanAreaDisplay">No area set.</div>
+                <div class="scanner-row" style="margin-top: 0.5rem;">
+                  <label for="showScannerPreviewToggle" style="cursor: pointer;">Show Scanner Preview Button</label>
+                  <input type="checkbox" id="showScannerPreviewToggle" style="cursor: pointer;" />
+                </div>
+                <button id="testScannerBtn" class="record-btn" style="margin-top: 0.5rem; border-color: #eab308; color: #eab308;">Test Scanner (Preview)</button>
+                <div id="scannerPreview" style="margin-top: 0.5rem; display: none; flex-direction: column; gap: 0.5rem;">
+                  <div style="font-size: 0.8rem; color: #a1a1aa;">Raw Text:</div>
+                  <div id="scannerRawText" style="font-family: monospace; background: #000; padding: 0.5rem; border-radius: 4px; color: #fff; font-size: 0.8rem; word-break: break-all;"></div>
+                  <div style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.25rem;">Processed Text:</div>
+                  <div id="scannerProcessedText" style="font-family: monospace; background: #000; padding: 0.5rem; border-radius: 4px; color: #eab308; font-size: 0.8rem; word-break: break-all;"></div>
+                  <div id="scannerMatchStatus" style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.25rem; font-weight: bold; text-align: center;"></div>
+                  <img id="scannerSnapshot" style="width: 100%; border: 1px solid #3f3f46; border-radius: 4px;" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -906,6 +917,12 @@
           <button id="closeSettingsBtn" class="close-modal"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
         </div>
         <div class="scanner-row">
+          <label for="legacyScreenScannerToggle" style="cursor: pointer; color: #f59e0b;">Enable Legacy Screen Scanner <br><span style="font-size:0.7rem; color:#71717a;">(Old option, not as reliable)</span></label>
+          <input type="checkbox" id="legacyScreenScannerToggle" style="cursor: pointer;" />
+        </div>
+        
+        <div class="divider"></div>
+        <div class="scanner-row">
           <label for="hydrationToggle" style="cursor: pointer;">Hydration Reminder</label>
           <input type="checkbox" id="hydrationToggle" style="cursor: pointer;" />
         </div>
@@ -929,6 +946,11 @@
         </div>
         <button id="testPopupBtn" class="record-btn" style="margin-top: 0.5rem;">Test Popup Now</button>
         
+        <div class="divider"></div>
+        <div class="label" style="margin-top: 1rem;">Log Reader Debug</div>
+        <button id="testLogReaderBtn" class="record-btn">Test EE.log Reader</button>
+        <div id="logReaderOutput" style="font-family: monospace; font-size: 0.75rem; background: #000; padding: 0.5rem; border-radius: 4px; color: #a1a1aa; margin-top: 0.5rem; display: none; white-space: pre-wrap; word-break: break-all; max-height: 150px; overflow-y: auto;"></div>
+
         <div class="divider"></div>
         <div class="label" style="margin-top: 1rem;">Layout Options</div>
         <div class="scanner-row">
@@ -1080,9 +1102,6 @@
     nextBtn.addEventListener("click", () => {
       if (upcoming === null) {
         upcoming = startRelic;
-        nextEl.textContent = upcoming;
-        broadcastOSD();
-        return;
       }
 
       nowEl.textContent = upcoming;
@@ -1225,7 +1244,10 @@
 
     /* --- AUTO SCANNER LOGIC --- */
     const autoScanToggle = document.getElementById('autoScanToggle');
+    const useLogScannerToggle = document.getElementById('useLogScannerToggle');
     const setScanAreaBtn = document.getElementById('setScanAreaBtn');
+    const legacyScannerWrapper = document.getElementById('legacyScannerWrapper');
+    const visualScannerControls = document.getElementById('visualScannerControls');
     const scannerStatusDot = document.getElementById('scannerStatusDot');
     const setVoidCascadeAreaBtn = document.getElementById('setVoidCascadeAreaBtn');
     const scanAreaDisplay = document.getElementById('scanAreaDisplay');
@@ -1311,6 +1333,21 @@
     autoScanToggle.addEventListener('change', () => {
       window.electronAPI.toggleAutoScan(autoScanToggle.checked);
       broadcastOSD();
+    });
+
+    function updateScannerUI() {
+      const isLegacyEnabled = document.getElementById('legacyScreenScannerToggle').checked;
+      const isLogMode = useLogScannerToggle.checked;
+
+      legacyScannerWrapper.style.display = isLegacyEnabled ? 'block' : 'none';
+      
+      // If Legacy is enabled, show visual controls ONLY if Log Mode is OFF
+      visualScannerControls.style.display = (isLegacyEnabled && !isLogMode) ? 'block' : 'none';
+    }
+
+    useLogScannerToggle.addEventListener('change', () => {
+      if (window.electronAPI) window.electronAPI.setLogScannerMode(useLogScannerToggle.checked);
+      updateScannerUI();
     });
 
     scanPauseInput.addEventListener('change', () => {
@@ -1481,6 +1518,7 @@
     const settingsBtn = document.getElementById('settingsBtn');
     const settingsModal = document.getElementById('settingsModal');
     const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+    const legacyScreenScannerToggle = document.getElementById('legacyScreenScannerToggle');
 
     settingsBtn.addEventListener('click', () => {
       settingsModal.classList.add('visible');
@@ -1492,6 +1530,11 @@
 
     settingsModal.addEventListener('click', (e) => {
       if (e.target === settingsModal) settingsModal.classList.remove('visible');
+    });
+
+    legacyScreenScannerToggle.addEventListener('change', () => {
+      if (window.electronAPI) window.electronAPI.setLegacyScreenScanner(legacyScreenScannerToggle.checked);
+      updateScannerUI();
     });
 
     /* --- HYDRATION REMINDER LOGIC --- */
@@ -1573,6 +1616,34 @@
     const testPopupBtn = document.getElementById('testPopupBtn');
     testPopupBtn.addEventListener('click', () => {
       showHydrationReminder(true); // Force show for test
+    });
+
+    const testLogReaderBtn = document.getElementById('testLogReaderBtn');
+    const logReaderOutput = document.getElementById('logReaderOutput');
+
+    testLogReaderBtn.addEventListener('click', async () => {
+      if (window.electronAPI && window.electronAPI.testLogReader) {
+        testLogReaderBtn.textContent = "Reading...";
+        testLogReaderBtn.disabled = true;
+        logReaderOutput.style.display = 'block';
+        logReaderOutput.textContent = "Checking...";
+        
+        try {
+          const result = await window.electronAPI.testLogReader();
+          if (result.success) {
+            logReaderOutput.textContent = `Path: ${result.path}\n\nLast few lines:\n${result.lines.join('\n')}`;
+            logReaderOutput.style.color = '#10b981';
+          } else {
+            logReaderOutput.textContent = `Error: ${result.message}`;
+            logReaderOutput.style.color = '#f87171';
+          }
+        } catch (e) {
+          logReaderOutput.textContent = "IPC Error: " + e;
+        } finally {
+          testLogReaderBtn.textContent = "Test EE.log Reader";
+          testLogReaderBtn.disabled = false;
+        }
+      }
     });
 
     function manageHydrationTimer() {
@@ -1682,6 +1753,8 @@
           hiddenResetTiers = settings.hiddenResetTiers || [];
           showRailjack = settings.showRailjack || false;
           autoScanToggle.checked = settings.autoScanEnabled || false;
+          useLogScannerToggle.checked = settings.useLogScanner || false;
+          legacyScreenScannerToggle.checked = settings.enableLegacyScreenScanner || false;
           
           scanIntervalNormalInput.value = settings.scanIntervalNormal || 10;
           scanIntervalCascadeInput.value = settings.scanIntervalCascade || 5;
@@ -1753,6 +1826,7 @@
           toggleScannerPreview(showPreview);
 
           applyUISettings(uiSettings);
+          updateScannerUI(); // Update visibility based on loaded settings
           updateColumnVisibility();
           broadcastOSD();
         }

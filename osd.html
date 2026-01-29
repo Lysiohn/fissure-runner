@@ -12,78 +12,161 @@
       height: 100%;
       box-sizing: border-box;
     }
+    /* Tidied up layout using Grid */
     #osd-wrapper {
       display: flex;
       flex-direction: column;
       justify-content: center;
       height: 100%;
-      padding: 10px;
-      background: rgba(9, 9, 11, 0.9);
-      border-radius: 8px;
-      border: 1px solid #27272a;
+      padding: 8px 12px 14px 12px;
+      background: rgba(9, 9, 11, 0.95);
+      border-radius: 6px;
+      border: 1px solid #3f3f46;
       box-sizing: border-box;
-      -webkit-app-region: drag;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      -webkit-app-region: drag; /* Allow dragging */
     }
-    .row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
-    .label { color: #a1a1aa; font-weight: 700; font-size: 10px; text-transform: uppercase; min-width: 35px; }
-    .value { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; flex-shrink: 1; }
+    #osd-grid {
+      display: grid;
+      grid-template-columns: max-content 1fr; /* Label | Value */
+      gap: 1px 10px;
+      align-items: center;
+    }
+    .label { 
+      color: #a1a1aa; font-weight: 600; font-size: 10px; text-transform: uppercase; 
+      text-align: right; white-space: nowrap; opacity: 0.9;
+    }
+    .value { font-weight: 600; font-size: 13px; color: #f4f4f5; display: flex; align-items: center; justify-content: space-between; text-shadow: 0 1px 2px rgba(0,0,0,0.5); min-width: 0; }
+    .value-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+    .icon { width: 14px; height: 14px; margin-right: 6px; object-fit: contain; }
+    
+    .clock-container {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: #a1a1aa;
+      font-size: 12px;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+
+    .hydration-popup {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #10b981;
+      color: #fff;
+      font-weight: 600;
+      font-size: 12px;
+      text-align: center;
+      padding: 4px 0;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <div id="osd-wrapper">
-    <div id="relic-row" class="row" style="display: none;">
-      <div class="label" style="color: #facc15;">Relic</div>
-      <div id="relic" class="value"></div>
-    </div>
-    <div id="cycle-row" class="row" style="display: none; margin-bottom: 4px;">
-      <div class="label" style="color: #60a5fa;">Cycle</div>
-      <div id="cycle-info" class="value" style="font-size: 12px;"></div>
-    </div>
-    <div class="row">
+    <div id="osd-grid">
+      <!-- Relic -->
+      <div class="label relic-row" style="display:none; color: #facc15;">Relic</div>
+      <div id="relic" class="value relic-row" style="display:none;"><span class="value-text"></span></div>
+
+      <!-- Cycle -->
+      <div class="label cycle-row" style="display:none; color: #60a5fa;">Cycle</div>
+      <div id="cycle-info" class="value cycle-row" style="display:none; font-size: 12px;"><span class="value-text"></span></div>
+
+      <!-- Now / Next -->
       <div class="label">Now</div>
-      <div id="now" class="value">—</div>
-    </div>
-    <div class="row">
+      <div id="now" class="value"><span class="value-text">—</span></div>
       <div class="label">Next</div>
-      <div id="next" class="value">—</div>
+      <div id="next" class="value"><span class="value-text">—</span></div>
+    </div> 
+    <div id="hydration-popup">💧 Hydrate!</div>
+    
+    <!-- Hidden Clock Element -->
+    <div id="clock-container" class="clock-container" style="display:none;">
+       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+       <span id="clock-text"></span>
     </div>
   </div>
   <script>
     window.osdAPI.onUpdateData((event, data) => {
       const nowEl = document.getElementById('now');
       const nextEl = document.getElementById('next');
-      const relicRow = document.getElementById('relic-row');
+      const relicRows = document.querySelectorAll('.relic-row');
       const relicVal = document.getElementById('relic');
-      const cycleRow = document.getElementById('cycle-row');
+      const cycleRows = document.querySelectorAll('.cycle-row');
       const cycleInfo = document.getElementById('cycle-info');
+      const hydrationPopup = document.getElementById('hydration-popup');
+      const clockContainer = document.getElementById('clock-container');
+      const clockText = document.getElementById('clock-text');
 
       if (nowEl) {
-        nowEl.textContent = data.now || '—';
-        nowEl.style.color = (data.now === "Running relic") ? "#10b981" : "#fff";
+        const textEl = nowEl.querySelector('.value-text');
+        if (textEl) {
+            textEl.textContent = data.now || '—';
+            textEl.style.color = (data.now === "Running relic") ? "#10b981" : "#fff";
+        }
       }
-      if (nextEl) nextEl.textContent = data.next || '—';
+      if (nextEl) {
+        const textEl = nextEl.querySelector('.value-text');
+        if (textEl) {
+            textEl.textContent = data.next || '—';
+            if (data.next && data.next.includes("Running")) textEl.style.color = "#10b981";
+            else if (data.next && data.next.includes("Trash")) textEl.style.color = "#a1a1aa";
+            else textEl.style.color = "#fff";
+        }
+      }
       
-      if (data.relic && data.relic.trim() !== "") {
-        if (relicRow) relicRow.style.display = 'flex';
-        if (relicVal) relicVal.textContent = data.relic;
+      const showRelic = data.relic && data.relic.trim() !== "";
+      if (showRelic) {
+        relicRows.forEach(el => el.style.display = '');
+        if (relicVal) relicVal.querySelector('.value-text').textContent = data.relic;
       } else {
-        if (relicRow) relicRow.style.display = 'none';
+        relicRows.forEach(el => el.style.display = 'none');
       }
 
+      let showCycle = false;
       if (data.cycleState) {
-        if (cycleRow) cycleRow.style.display = 'flex';
+        showCycle = true;
+        cycleRows.forEach(el => el.style.display = '');
         if (cycleInfo) {
-          cycleInfo.textContent = `${data.cycleCount} (${data.cycleState})`;
-          cycleInfo.style.color = (data.cycleState.includes("New Cycle")) ? "#10b981" : "#a1a1aa";
+          const textEl = cycleInfo.querySelector('.value-text');
+          textEl.textContent = `${data.cycleCount} (${data.cycleState})`;
+          textEl.style.color = (data.cycleState.includes("New Cycle")) ? "#10b981" : "#a1a1aa";
         }
       } else if (data.cycleCount > 0) {
-        if (cycleRow) cycleRow.style.display = 'flex';
+        showCycle = true;
+        cycleRows.forEach(el => el.style.display = '');
         if (cycleInfo) {
-          cycleInfo.textContent = data.cycleCount;
-          cycleInfo.style.color = "#fff";
+          const textEl = cycleInfo.querySelector('.value-text');
+          textEl.textContent = data.cycleCount;
+          textEl.style.color = "#fff";
         }
       } else {
-        if (cycleRow) cycleRow.style.display = 'none';
+        cycleRows.forEach(el => el.style.display = 'none');
+      }
+
+      if (data.clock) {
+        clockContainer.style.display = 'flex';
+        clockText.textContent = data.clock;
+        // Move clock to appropriate row
+        if (showRelic) {
+            relicVal.appendChild(clockContainer);
+        } else if (showCycle) {
+            cycleInfo.appendChild(clockContainer);
+        } else {
+            // Fallback to Now row if both Relic and Cycle are hidden
+            nowEl.appendChild(clockContainer);
+        }
+      } else {
+        clockContainer.style.display = 'none';
+      }
+
+      if (hydrationPopup) {
+        hydrationPopup.style.display = data.showHydration ? 'block' : 'none';
       }
     });
 

@@ -43,5 +43,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   testLogReader: () => ipcRenderer.invoke('test-log-reader'),
   setVoidCascadeMode: (enabled) => ipcRenderer.send('set-void-cascade-mode', enabled),
   setHotkeyEnabled: (enabled) => ipcRenderer.send('set-hotkey-enabled', enabled),
-  setLegacyScreenScanner: (enabled) => ipcRenderer.send('set-legacy-screen-scanner', enabled)
+  setLegacyScreenScanner: (enabled) => ipcRenderer.send('set-legacy-screen-scanner', enabled),
+  setAutoRelicEnabled: (enabled) => ipcRenderer.send('set-auto-relic-enabled', enabled),
+  onDetectedRelic: (callback) => ipcRenderer.on('detected-relic', callback),
+  setCloseToTray: (enabled) => ipcRenderer.send('set-close-to-tray', enabled),
+  setAlwaysOnTop: (enabled) => ipcRenderer.send('set-always-on-top', enabled),
+  setOSDShowClock: (enabled) => ipcRenderer.send('set-osd-show-clock', enabled),
+  setOSDHydrationNotify: (enabled) => ipcRenderer.send('set-osd-hydration-notify', enabled)
 });

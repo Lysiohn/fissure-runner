@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, dialog, shell } = require("electron");
+const { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, dialog, shell, Tray, Menu } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
@@ -6,6 +6,8 @@ const { createWorker } = require('tesseract.js');
 
 let win;
 let osdWin;
+let tray = null;
+let isQuitting = false;
 let scannerWin;
 let autoScanInterval = null;
 let logCheckInterval = null;
@@ -14,6 +16,7 @@ let lastLogSize = 0;
 let pendingScanType = 'normal';
 let isScanning = false;
 let isScannerPaused = false;
+let localPlayerId = null;
 let worker = null;
 const MAX_READ_SIZE = 2 * 1024 * 1024; // 2MB
 const sharedLogBuffer = Buffer.alloc(MAX_READ_SIZE);
@@ -78,7 +81,12 @@ if (typeof settings.ui.autoScannerSettingsCollapsed === 'undefined') settings.ui
 if (typeof settings.ui.osdSettingsCollapsed === 'undefined') settings.ui.osdSettingsCollapsed = false;
 if (typeof settings.ui.generalSettingsCollapsed === 'undefined') settings.ui.generalSettingsCollapsed = false;
 if (typeof settings.ui.showScannerPreview === 'undefined') settings.ui.showScannerPreview = true;
+if (typeof settings.autoRelicEnabled === 'undefined') settings.autoRelicEnabled = false;
 if (!settings.layout) settings.layout = null;
+if (typeof settings.closeToTray === 'undefined') settings.closeToTray = false;
+if (typeof settings.alwaysOnTop === 'undefined') settings.alwaysOnTop = false;
+if (typeof settings.osdShowClock === 'undefined') settings.osdShowClock = false;
+if (typeof settings.osdHydrationNotify === 'undefined') settings.osdHydrationNotify = false;
 
 function registerHotkey() {
   globalShortcut.unregisterAll();
@@ -102,6 +110,7 @@ function createWindow() {
     x: x,
     y: y,
     icon: path.join(__dirname, "icon.ico"),
+    alwaysOnTop: settings.alwaysOnTop,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js")
@@ -117,6 +126,11 @@ function createWindow() {
   });
 
   win.on('closed', () => {
+    // If closeToTray is enabled and we are not quitting via context menu/app, hide instead
+    if (settings.closeToTray && !isQuitting) {
+       // This logic is actually handled in the 'close' event usually, but 'closed' is too late to prevent.
+       // We need to listen to 'close' event on the window instance.
+    }
     win = null;
     if (osdWin && !osdWin.isDestroyed()) {
       osdWin.close();
@@ -125,6 +139,14 @@ function createWindow() {
 
   win.on('resized', saveWindowBounds);
   win.on('moved', saveWindowBounds);
+  
+  win.on('close', (event) => {
+    if (settings.closeToTray && !isQuitting) {
+      event.preventDefault();
+      win.hide();
+      return false;
+    }
+  });
 }
 
 function saveWindowBounds() {
@@ -140,6 +162,8 @@ app.whenReady().then(() => {
   if (settings.osdEnabled) {
     createOSDWindow();
   }
+  
+  if (settings.closeToTray) createTray();
 
   // Check for updates on start, but don't download automatically
   autoUpdater.autoDownload = false;
@@ -168,6 +192,10 @@ app.whenReady().then(() => {
   });
 });
 
+app.on('before-quit', () => {
+  isQuitting = true;
+});
+
 ipcMain.on("set-hotkey", (event, newHotkey) => {
   settings.hotkey = newHotkey;
   saveSettings();
@@ -182,6 +210,11 @@ ipcMain.on("set-hotkey-enabled", (event, enabled) => {
 
 ipcMain.on("set-relic-name", (event, name) => {
   settings.relicName = name;
+  saveSettings();
+});
+
+ipcMain.on("set-auto-relic-enabled", (event, enabled) => {
+  settings.autoRelicEnabled = enabled;
   saveSettings();
 });
 
@@ -260,6 +293,33 @@ ipcMain.on("set-filters", (event, data) => {
 
 ipcMain.on('set-ui-settings', (event, uiSettings) => {
   settings.ui = { ...settings.ui, ...uiSettings };
+  saveSettings();
+});
+
+ipcMain.on('set-close-to-tray', (event, enabled) => {
+  settings.closeToTray = enabled;
+  saveSettings();
+  if (enabled) {
+    createTray();
+  } else if (tray) {
+    tray.destroy();
+    tray = null;
+  }
+});
+
+ipcMain.on('set-always-on-top', (event, enabled) => {
+  settings.alwaysOnTop = enabled;
+  saveSettings();
+  if (win) win.setAlwaysOnTop(enabled, enabled ? 'screen-saver' : 'normal');
+});
+
+ipcMain.on('set-osd-show-clock', (event, enabled) => {
+  settings.osdShowClock = enabled;
+  saveSettings();
+});
+
+ipcMain.on('set-osd-hydration-notify', (event, enabled) => {
+  settings.osdHydrationNotify = enabled;
   saveSettings();
 });
 
@@ -480,6 +540,28 @@ function createOSDWindow() {
   });
 }
 
+function createTray() {
+  if (tray) return;
+  const iconPath = path.join(__dirname, "icon.ico");
+  if (!fs.existsSync(iconPath)) return;
+  
+  tray = new Tray(iconPath);
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Show App', click: () => win.show() },
+    { label: 'Quit', click: () => {
+      isQuitting = true;
+      app.quit();
+    }}
+  ]);
+  tray.setToolTip('Fissure Runner');
+  tray.setContextMenu(contextMenu);
+  
+  tray.on('click', () => {
+    if (win.isVisible()) win.hide();
+    else win.show();
+  });
+}
+
 function broadcastScannerStatus() {
   if (!win) return;
   let status = 'disabled';
@@ -662,6 +744,35 @@ ipcMain.handle('test-log-reader', async () => {
   }
 });
 
+// Pre-compile Regex to avoid recreation every tick
+const RELIC_DIALOG_REGEX = /Dialog::CreateOkCancel\(description=Are you sure you want to equip (.+?) Relic(?: \[(.+?)\])?/g;
+const LOGIN_REGEX = /Logged in .* \((.+?)\)/;
+
+function findLocalPlayerId() {
+  try {
+    if (!fs.existsSync(logPath)) return;
+    const content = fs.readFileSync(logPath, 'utf8');
+    const matches = [...content.matchAll(/Logged in .* \((.+?)\)/g)];
+    if (matches.length > 0) {
+      localPlayerId = matches[matches.length - 1][1];
+      console.log("Found Local Player ID from existing log:", localPlayerId);
+    }
+  } catch (e) { console.error("Error finding player ID:", e); }
+}
+
+function findInitialState() {
+  try {
+    if (!fs.existsSync(logPath)) return;
+    const stats = fs.statSync(logPath);
+    // Read last 5MB to find recent state
+    const readSize = Math.min(stats.size, 5 * 1024 * 1024); 
+    const buffer = Buffer.alloc(readSize);
+    const fd = fs.openSync(logPath, 'r');
+    fs.readSync(fd, buffer, 0, readSize, stats.size - readSize);
+    fs.closeSync(fd);
+  } catch (e) { console.error("Error finding initial state:", e); }
+}
+
 function checkLogUpdates() {
   if (isScannerPaused) return;
   
@@ -695,6 +806,30 @@ function checkLogUpdates() {
 
       lastLogSize = currentSize;
       const content = sharedLogBuffer.toString('utf8', 0, bytesRead);
+
+      // --- Run Summary: Detect Player ID & Rewards ---
+      const loginMatch = LOGIN_REGEX.exec(content);
+      if (loginMatch) {
+        localPlayerId = loginMatch[1];
+      }
+
+      // --- Auto Relic Detection ---
+      if (settings.autoRelicEnabled) {
+        // Use the confirmation dialog to detect the active relic (Specific to local player)
+        // Example: Dialog::CreateOkCancel(description=Are you sure you want to equip Lith C5 Relic [FLAWLESS]...
+        let match;
+        let lastFound = null;
+        while ((match = RELIC_DIALOG_REGEX.exec(content)) !== null) {
+          lastFound = match;
+        }
+        if (lastFound && lastFound[1]) {
+          let relicName = lastFound[1].trim();
+          let rarity = lastFound[2] ? lastFound[2].trim() : 'INTACT';
+          rarity = rarity.charAt(0).toUpperCase() + rarity.slice(1).toLowerCase();
+          
+          if (win) win.webContents.send('detected-relic', `${relicName} ${rarity}`);
+        }
+      }
 
       // Optimization: Check content directly instead of splitting into lines
       
@@ -756,6 +891,17 @@ function startAutoScanner() {
       logCheckInterval = setInterval(checkLogUpdates, 1000); // Check every 1s
       broadcastScannerStatus();
       console.log("Started Log Scanner.");
+
+      // Attempt to find player ID if not already known
+      if (!localPlayerId) findLocalPlayerId();
+      findInitialState();
+
+      // Free up memory if Tesseract worker was active
+      if (worker) {
+        worker.terminate().catch(e => console.error("Error terminating worker:", e));
+        worker = null;
+        console.log("Terminated background OCR worker to save memory.");
+      }
     } else {
       console.error("EE.log not found at", logPath);
     }

@@ -849,41 +849,6 @@
               <label for="autoRelicToggle" style="cursor: pointer;">Auto-detect Relic from Log <br><span style="font-size:0.7rem; color:#71717a;">(Updates "Current Relic" automatically)</span></label>
               <input type="checkbox" id="autoRelicToggle" style="cursor: pointer;" />
             </div>
-
-            <!-- Legacy Screen Scanner Wrapper -->
-            <div id="legacyScannerWrapper" style="display: none; border-top: 1px solid #27272a; margin-top: 0.5rem; padding-top: 0.5rem;">
-              <div class="scanner-row">
-                <label for="useLogScannerToggle" style="cursor: pointer; color: #60a5fa;">Use Log Reader (EE.log)</label>
-                <input type="checkbox" id="useLogScannerToggle" style="cursor: pointer;" />
-              </div>
-              
-              <div id="visualScannerControls">
-                <div class="scanner-row">
-                  <label for="scanIntervalNormalInput">Normal Interval (s)</label>
-                  <input type="number" id="scanIntervalNormalInput" min="1" value="10" style="width: 50px; background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px; text-align: center;" />
-                </div>
-                <div class="scanner-row">
-                  <label for="scanIntervalCascadeInput">Cascade Interval (s)</label>
-                  <input type="number" id="scanIntervalCascadeInput" min="1" value="5" style="width: 50px; background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px; text-align: center;" />
-                </div>
-                <button id="setScanAreaBtn">Set Normal Scan Area</button>
-                <button id="setVoidCascadeAreaBtn" class="record-btn" style="margin-top: 0.5rem;">Set Void Cascade Area</button>
-                <div id="scanAreaDisplay">No area set.</div>
-                <div class="scanner-row" style="margin-top: 0.5rem;">
-                  <label for="showScannerPreviewToggle" style="cursor: pointer;">Show Scanner Preview Button</label>
-                  <input type="checkbox" id="showScannerPreviewToggle" style="cursor: pointer;" />
-                </div>
-                <button id="testScannerBtn" class="record-btn" style="margin-top: 0.5rem; border-color: #eab308; color: #eab308;">Test Scanner (Preview)</button>
-                <div id="scannerPreview" style="margin-top: 0.5rem; display: none; flex-direction: column; gap: 0.5rem;">
-                  <div style="font-size: 0.8rem; color: #a1a1aa;">Raw Text:</div>
-                  <div id="scannerRawText" style="font-family: monospace; background: #000; padding: 0.5rem; border-radius: 4px; color: #fff; font-size: 0.8rem; word-break: break-all;"></div>
-                  <div style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.25rem;">Processed Text:</div>
-                  <div id="scannerProcessedText" style="font-family: monospace; background: #000; padding: 0.5rem; border-radius: 4px; color: #eab308; font-size: 0.8rem; word-break: break-all;"></div>
-                  <div id="scannerMatchStatus" style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.25rem; font-weight: bold; text-align: center;"></div>
-                  <img id="scannerSnapshot" style="width: 100%; border: 1px solid #3f3f46; border-radius: 4px;" />
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -980,12 +945,12 @@
             <div id="updateStatus" style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.5rem; text-align: center;"></div>
             <button id="viewPatchNotesBtn" class="record-btn" style="margin-top: 0.5rem;">View Patch Notes (Latest)</button>
             <div id="patchNotesContent" style="display:none; background:#121214; padding:1rem; margin-top:0.5rem; border-radius:4px; font-size:0.8rem; color:#a1a1aa; max-height:200px; overflow-y:auto; border: 1px solid #27272a;">
-                <h4 style="color:#fff; margin-top:0; margin-bottom:0.5rem;">v1.7.2 - OSD & UI Polish</h4>
+                <h4 style="color:#fff; margin-top:0; margin-bottom:0.5rem;">v1.7.3 - Reliability & Linux Support</h4>
                 <ul style="padding-left:1.2rem; margin:0; display:flex; flex-direction:column; gap:0.25rem;">
-                    <li><strong>OSD Redesign:</strong> The On-Screen Display has been redesigned to be more compact and visually appealing.</li>
-                    <li><strong>Flexible Clock:</strong> The OSD clock now dynamically positions itself next to the Relic or Cycle information.</li>
-                    <li><strong>Settings Cleanup:</strong> General Settings are now organized into collapsible sections for easier navigation.</li>
-                    <li><strong>Feature Removal:</strong> Removed the experimental Run Summary and Void Traces features to streamline the application.</li>
+                    <li><strong>Scanner Reliability:</strong> Improved log reading to prevent missed mission completions.</li>
+                    <li><strong>Hydration Reminder:</strong> Now runs in the background for better reliability and includes a Tray toggle.</li>
+                    <li><strong>Linux Support:</strong> Added automatic path detection for Proton/Steam and build targets for Arch/AppImage.</li>
+                    <li><strong>Fixes:</strong> Auto-relic detection now only updates when "Running relic" is active.</li>
                 </ul>
             </div>
             <div class="divider"></div>
@@ -1012,11 +977,6 @@
         <details class="settings-group">
           <summary>Scanner & Detection</summary>
           <div class="group-content">
-            <div class="scanner-row" style="margin-top: 0.5rem;">
-              <label for="legacyScreenScannerToggle" style="cursor: pointer; color: #f59e0b;">Enable Legacy Screen Scanner <br><span style="font-size:0.7rem; color:#71717a;">(Old option, not as reliable)</span></label>
-              <input type="checkbox" id="legacyScreenScannerToggle" style="cursor: pointer;" />
-            </div>
-            <div class="divider"></div>
             <button id="testLogReaderBtn" class="record-btn">Test EE.log Reader</button>
             <div id="logReaderOutput" style="font-family: monospace; font-size: 0.75rem; background: #000; padding: 0.5rem; border-radius: 4px; color: #a1a1aa; margin-top: 0.5rem; display: none; white-space: pre-wrap; word-break: break-all; max-height: 150px; overflow-y: auto;"></div>
           </div>
@@ -1345,129 +1305,17 @@
 
     /* --- AUTO SCANNER LOGIC --- */
     const autoScanToggle = document.getElementById('autoScanToggle');
-    const useLogScannerToggle = document.getElementById('useLogScannerToggle');
-    const setScanAreaBtn = document.getElementById('setScanAreaBtn');
-    const legacyScannerWrapper = document.getElementById('legacyScannerWrapper');
-    const visualScannerControls = document.getElementById('visualScannerControls');
     const scannerStatusDot = document.getElementById('scannerStatusDot');
-    const setVoidCascadeAreaBtn = document.getElementById('setVoidCascadeAreaBtn');
-    const scanAreaDisplay = document.getElementById('scanAreaDisplay');
     const scanPauseInput = document.getElementById('scanPauseInput');
-    const scanIntervalNormalInput = document.getElementById('scanIntervalNormalInput');
-    const scanIntervalCascadeInput = document.getElementById('scanIntervalCascadeInput');
-    const testScannerBtn = document.getElementById('testScannerBtn');
-    const scannerPreview = document.getElementById('scannerPreview');
-    const scannerRawText = document.getElementById('scannerRawText');
-    const scannerProcessedText = document.getElementById('scannerProcessedText');
-    const scannerMatchStatus = document.getElementById('scannerMatchStatus');    const scannerSnapshot = document.getElementById('scannerSnapshot');
-
-    testScannerBtn.addEventListener('click', async () => {
-      if (window.electronAPI && window.electronAPI.testScanner) {
-        testScannerBtn.textContent = "Scanning...";
-        testScannerBtn.disabled = true;
-        scannerPreview.style.display = 'flex';
-        scannerRawText.textContent = '...';
-        scannerProcessedText.textContent = '...';
-        scannerMatchStatus.textContent = '';
-        scannerSnapshot.src = "";
-        try {
-          const result = await window.electronAPI.testScanner();
-          if (result.error) {
-            scannerRawText.textContent = "Error: " + result.error;
-            scannerProcessedText.textContent = "N/A";            scannerSnapshot.src = "";
-          } else {
-            scannerRawText.textContent = result.rawText || "[No text detected]";
-            scannerProcessedText.textContent = result.processedText || "[N/A]";
-            if (result.match) {
-              scannerMatchStatus.textContent = `✅ Match Found (Mode: ${result.mode})`;
-              scannerMatchStatus.style.color = '#10b981';
-            } else {
-              scannerMatchStatus.textContent = `❌ No Match Found (Mode: ${result.mode})`;
-              scannerMatchStatus.style.color = '#f87171';
-            }            scannerSnapshot.src = result.image;
-          }
-        } catch (e) {
-          scannerRawText.textContent = "Error: " + e;
-        } finally {
-          testScannerBtn.textContent = "Test Scanner (Preview)";
-          testScannerBtn.disabled = false;
-        }
-      }
-    });
-
-    function updateScanAreaDisplay(areas) {
-      // Handle both old format (single area) and new format (object with keys)
-      let normal = areas;
-      let vc = null;
-      
-      if (areas && (areas.normal || areas.voidCascade)) {
-        normal = areas.normal;
-        vc = areas.voidCascade;
-      }
-
-      let text = '';
-      if (normal && normal.width > 0) {
-        text += `Normal: ${normal.width}x${normal.height} at (${normal.x}, ${normal.y})`;
-      } else {
-        text += 'Normal: Not set';
-      }
-      
-      text += ' | ';
-      
-      if (vc && vc.width > 0) {
-        text += `VC: ${vc.width}x${vc.height} at (${vc.x}, ${vc.y})`;
-      } else {
-        text += 'VC: Not set';
-      }
-      
-      scanAreaDisplay.textContent = text;
-    }
-
-    setScanAreaBtn.addEventListener('click', () => {
-      window.electronAPI.openScannerWindow('normal');
-    });
-
-    setVoidCascadeAreaBtn.addEventListener('click', () => {
-      window.electronAPI.openScannerWindow('voidCascade');
-    });
 
     autoScanToggle.addEventListener('change', () => {
       window.electronAPI.toggleAutoScan(autoScanToggle.checked);
       broadcastOSD();
     });
 
-    function updateScannerUI() {
-      const isLegacyEnabled = document.getElementById('legacyScreenScannerToggle').checked;
-      const isLogMode = useLogScannerToggle.checked;
-
-      legacyScannerWrapper.style.display = isLegacyEnabled ? 'block' : 'none';
-      
-      // If Legacy is enabled, show visual controls ONLY if Log Mode is OFF
-      visualScannerControls.style.display = (isLegacyEnabled && !isLogMode) ? 'block' : 'none';
-    }
-
-    useLogScannerToggle.addEventListener('change', () => {
-      if (window.electronAPI) window.electronAPI.setLogScannerMode(useLogScannerToggle.checked);
-      updateScannerUI();
-    });
-
     scanPauseInput.addEventListener('change', () => {
       const val = parseInt(scanPauseInput.value);
       if (val > 0 && window.electronAPI) window.electronAPI.setAutoScanPause(val);
-    });
-
-    scanIntervalNormalInput.addEventListener('change', () => {
-      const val = parseInt(scanIntervalNormalInput.value);
-      if (val > 0 && window.electronAPI) window.electronAPI.setScanInterval('normal', val);
-    });
-
-    scanIntervalCascadeInput.addEventListener('change', () => {
-      const val = parseInt(scanIntervalCascadeInput.value);
-      if (val > 0 && window.electronAPI) window.electronAPI.setScanInterval('cascade', val);
-    });
-
-    window.electronAPI.onScanAreaUpdated((event, areas) => {
-      updateScanAreaDisplay(areas);
     });
 
     let countdownInterval;
@@ -1494,7 +1342,7 @@
 
     if (window.electronAPI) {
       window.electronAPI.onResyncScannerState(() => {
-        broadcastOSD();
+        broadcastOSD(true);
       });
     }
 
@@ -1522,7 +1370,7 @@
     // relicNameInput listener moved to debounce logic above
 
     let lastOSDDataStr = ""; // Cache to prevent unnecessary IPC calls
-    function broadcastOSD() {
+    function broadcastOSD(force = false) {
       let stateText = cycleStateEl.textContent;
       
       // Append tracked mission timer to cycle state if active
@@ -1549,7 +1397,7 @@
       };
 
       const dataStr = JSON.stringify(data);
-      if (dataStr === lastOSDDataStr) return; // Skip if data hasn't changed
+      if (!force && dataStr === lastOSDDataStr) return; // Skip if data hasn't changed
       lastOSDDataStr = dataStr;
 
       if (window.electronAPI) window.electronAPI.updateOSD(data);
@@ -1649,7 +1497,6 @@
     const settingsBtn = document.getElementById('settingsBtn');
     const settingsModal = document.getElementById('settingsModal');
     const closeSettingsBtn = document.getElementById('closeSettingsBtn');
-    const legacyScreenScannerToggle = document.getElementById('legacyScreenScannerToggle');
     const closeToTrayToggle = document.getElementById('closeToTrayToggle');
     const autoRelicToggle = document.getElementById('autoRelicToggle');
 
@@ -1665,11 +1512,6 @@
       if (e.target === settingsModal) settingsModal.classList.remove('visible');
     });
 
-    legacyScreenScannerToggle.addEventListener('change', () => {
-      if (window.electronAPI) window.electronAPI.setLegacyScreenScanner(legacyScreenScannerToggle.checked);
-      updateScannerUI();
-    });
-
     closeToTrayToggle.addEventListener('change', () => {
       if (window.electronAPI) window.electronAPI.setCloseToTray(closeToTrayToggle.checked);
     });
@@ -1680,28 +1522,36 @@
 
     if (window.electronAPI) {
       window.electronAPI.onDetectedRelic((event, relicName) => {
-        // Only update if we are in a "Running" state or if the box is empty
-        // The prompt requested: "fetch the relic once they have the Running relic"
-        // We check if the current upcoming/now is "Running relic" or if the user is just setting up.
-        relicNameInput.value = relicName;
-        // Trigger the debounce save
-        relicNameInput.dispatchEvent(new Event('input'));
+        if (nowEl.textContent === RUNNING) {
+          relicNameInput.value = relicName;
+          // Trigger the debounce save
+          relicNameInput.dispatchEvent(new Event('input'));
+        }
       });
     }
 
     /* --- HYDRATION REMINDER LOGIC --- */
     const hydrationToggle = document.getElementById('hydrationToggle');
     const osdHydrationToggle = document.getElementById('osdHydrationToggle');
-    let hydrationInterval = null;
     let customAudio = null;
 
     hydrationToggle.addEventListener('change', () => {
       if (window.electronAPI) {
         window.electronAPI.setHydrationReminderEnabled(hydrationToggle.checked);
       }
-      manageHydrationTimer();
     });
     
+    if (window.electronAPI) {
+      window.electronAPI.onHydrationStateChanged((event, isEnabled) => {
+        hydrationToggle.checked = isEnabled;
+      });
+      
+      // Listen for the background timer
+      window.electronAPI.onTriggerHydration(() => {
+        showHydrationReminder(false);
+      });
+    }
+
     osdHydrationToggle.addEventListener('change', () => {
       if (window.electronAPI) window.electronAPI.setOSDHydrationNotify(osdHydrationToggle.checked);
     });
@@ -1755,7 +1605,6 @@
       if (minutes > 0 && window.electronAPI) {
         window.electronAPI.setHydrationInterval(minutes);
       }
-      manageHydrationTimer(); // Restart timer with new interval
     });
 
     async function loadCustomSoundData() {
@@ -1802,15 +1651,6 @@
         }
       }
     });
-
-    function manageHydrationTimer() {
-      if (hydrationInterval) clearInterval(hydrationInterval);
-      if (hydrationToggle.checked) {
-        const intervalMinutes = parseInt(hydrationIntervalInput.value) || 60;
-        const intervalMs = intervalMinutes * 60 * 1000;
-        if (intervalMs > 0) hydrationInterval = setInterval(() => showHydrationReminder(false), intervalMs);
-      }
-    }
 
     let osdHydrationActive = false;
     function showHydrationReminder(isTest = false) {
@@ -1944,13 +1784,8 @@
           hiddenResetTiers = settings.hiddenResetTiers || [];
           hiddenVariants = settings.hiddenVariants || [];
           autoScanToggle.checked = settings.autoScanEnabled || false;
-          useLogScannerToggle.checked = settings.useLogScanner || false;
-          legacyScreenScannerToggle.checked = settings.enableLegacyScreenScanner || false;
           autoRelicToggle.checked = settings.autoRelicEnabled || false;
           closeToTrayToggle.checked = settings.closeToTray || false;
-          
-          scanIntervalNormalInput.value = settings.scanIntervalNormal || 10;
-          scanIntervalCascadeInput.value = settings.scanIntervalCascade || 5;
 
           // Load Relic Name
           if (settings.relicName) {
@@ -1992,12 +1827,10 @@
           osdClockToggle.checked = settings.osdShowClock || false;
           hideOSDWhenEmptyToggle.checked = (settings.ui && settings.ui.hideOSDWhenEmpty) || false;
           scanPauseInput.value = settings.autoScanPause || 30;
-          updateScanAreaDisplay({ normal: settings.scanArea, voidCascade: settings.voidCascadeScanArea });
           
           hydrationToggle.checked = settings.hydrationReminderEnabled || false;
           osdHydrationToggle.checked = settings.osdHydrationNotify || false;
 
-          manageHydrationTimer();
           hydrationIntervalInput.value = settings.hydrationIntervalMinutes || 60;
           hydrationVolumeInput.value = settings.hydrationSoundVolume !== undefined ? settings.hydrationSoundVolume : 0.5;
           updateSoundUI(settings.hydrationSound);
@@ -2013,16 +1846,7 @@
 
           uiSettings = settings.ui || {};
           
-          // Load Scanner Preview Button State
-          const showPreview = settings.ui.showScannerPreview !== false; // Default true
-          const showScannerPreviewToggle = document.getElementById('showScannerPreviewToggle');
-          if (showScannerPreviewToggle) {
-             showScannerPreviewToggle.checked = showPreview;
-          }
-          toggleScannerPreview(showPreview);
-
           applyUISettings(uiSettings);
-          updateScannerUI(); // Update visibility based on loaded settings
           updateColumnVisibility();
           broadcastOSD();
 
@@ -2574,13 +2398,6 @@
         window.electronAPI.setAlwaysOnTop(isActive);
       }
     });
-
-    function toggleScannerPreview(show) {
-      const btn = document.getElementById('testScannerBtn');
-      const preview = document.getElementById('scannerPreview');
-      if (btn) btn.style.display = show ? 'block' : 'none';
-      if (!show && preview) preview.style.display = 'none';
-    }
 
     let isEditingLayout = false;
 

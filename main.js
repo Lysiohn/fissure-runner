@@ -1,25 +1,41 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, screen, desktopCapturer, dialog, shell, Tray, Menu } = require("electron");
+const { app, BrowserWindow, globalShortcut, ipcMain, screen, dialog, shell, Tray, Menu } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
-const { createWorker } = require('tesseract.js');
+
+// Linux Transparency Fixes
+if (process.platform === "linux") {
+  app.commandLine.appendSwitch("enable-transparent-visuals");
+  app.commandLine.appendSwitch("disable-gpu");
+}
 
 let win;
 let osdWin;
 let tray = null;
 let isQuitting = false;
-let scannerWin;
 let autoScanInterval = null;
 let logCheckInterval = null;
-const logPath = path.join(process.env.LOCALAPPDATA, "Warframe", "EE.log");
+let hydrationTimer = null;
+
+let logPath;
+if (process.platform === "linux") {
+  const home = process.env.HOME || "";
+  const paths = [
+    path.join(home, ".steam/steam/steamapps/compatdata/230410/pfx/drive_c/users/steamuser/AppData/Local/Warframe/EE.log"),
+    path.join(home, ".local/share/Steam/steamapps/compatdata/230410/pfx/drive_c/users/steamuser/AppData/Local/Warframe/EE.log"),
+    path.join(home, ".var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps/compatdata/230410/pfx/drive_c/users/steamuser/AppData/Local/Warframe/EE.log")
+  ];
+  logPath = paths.find(p => fs.existsSync(p)) || paths[0];
+} else {
+  logPath = path.join(process.env.LOCALAPPDATA || "", "Warframe", "EE.log");
+}
+
 let lastLogSize = 0;
-let pendingScanType = 'normal';
-let isScanning = false;
 let isScannerPaused = false;
 let localPlayerId = null;
-let worker = null;
 const MAX_READ_SIZE = 2 * 1024 * 1024; // 2MB
 const sharedLogBuffer = Buffer.alloc(MAX_READ_SIZE);
+const OVERLAP_SIZE = 4096; // Increased overlap to catch split keywords
 
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
 let settings;
@@ -52,14 +68,8 @@ if (!settings.hiddenMissionTypes) settings.hiddenMissionTypes = [];
 if (!settings.hiddenTiers) settings.hiddenTiers = [];
 if (!settings.hiddenResetTiers) settings.hiddenResetTiers = [];
 if (!settings.hiddenVariants) settings.hiddenVariants = [];
-if (!settings.scanArea) settings.scanArea = null;
-if (!settings.voidCascadeScanArea) settings.voidCascadeScanArea = null;
 if (typeof settings.autoScanEnabled === 'undefined') settings.autoScanEnabled = false;
-if (typeof settings.useLogScanner === 'undefined') settings.useLogScanner = true;
-if (typeof settings.enableLegacyScreenScanner === 'undefined') settings.enableLegacyScreenScanner = false;
 if (typeof settings.autoScanPause === 'undefined') settings.autoScanPause = 30;
-if (typeof settings.scanIntervalNormal === 'undefined') settings.scanIntervalNormal = 10;
-if (typeof settings.scanIntervalCascade === 'undefined') settings.scanIntervalCascade = 5;
 if (typeof settings.osdEnabled === 'undefined') settings.osdEnabled = false;
 if (!settings.osdPosition) settings.osdPosition = { x: 100, y: 100 };
 if (typeof settings.osdOpacity === 'undefined') settings.osdOpacity = 1.0;
@@ -87,6 +97,21 @@ if (typeof settings.closeToTray === 'undefined') settings.closeToTray = false;
 if (typeof settings.alwaysOnTop === 'undefined') settings.alwaysOnTop = false;
 if (typeof settings.osdShowClock === 'undefined') settings.osdShowClock = false;
 if (typeof settings.osdHydrationNotify === 'undefined') settings.osdHydrationNotify = false;
+
+function updateHydrationTimer() {
+  if (hydrationTimer) clearInterval(hydrationTimer);
+  hydrationTimer = null;
+
+  if (settings.hydrationReminderEnabled) {
+    const minutes = settings.hydrationIntervalMinutes || 60;
+    const intervalMs = minutes * 60 * 1000;
+    if (intervalMs > 0) {
+      hydrationTimer = setInterval(() => {
+        if (win) win.webContents.send('trigger-hydration');
+      }, intervalMs);
+    }
+  }
+}
 
 function registerHotkey() {
   globalShortcut.unregisterAll();
@@ -159,6 +184,7 @@ function saveWindowBounds() {
 app.whenReady().then(() => {
   createWindow();
   registerHotkey();
+  updateHydrationTimer();
   if (settings.osdEnabled) {
     createOSDWindow();
   }
@@ -236,11 +262,13 @@ ipcMain.on("set-layout", (event, layout) => {
 ipcMain.on("set-hydration-reminder-enabled", (event, enabled) => {
   settings.hydrationReminderEnabled = enabled;
   saveSettings();
+  updateHydrationTimer();
 });
 
 ipcMain.on('set-hydration-interval', (event, minutes) => {
   settings.hydrationIntervalMinutes = minutes;
   saveSettings();
+  updateHydrationTimer();
 });
 
 ipcMain.handle('select-hydration-sound', async () => {
@@ -321,50 +349,6 @@ ipcMain.on('set-osd-show-clock', (event, enabled) => {
 ipcMain.on('set-osd-hydration-notify', (event, enabled) => {
   settings.osdHydrationNotify = enabled;
   saveSettings();
-});
-
-ipcMain.on('open-scanner-window', (event, type) => {
-  if (scannerWin) {
-    scannerWin.focus();
-    return;
-  }
-  pendingScanType = type || 'normal';
-  const primaryDisplay = screen.getPrimaryDisplay();
-  scannerWin = new BrowserWindow({
-    x: primaryDisplay.bounds.x,
-    y: primaryDisplay.bounds.y,
-    width: primaryDisplay.bounds.width,
-    height: primaryDisplay.bounds.height,
-    transparent: true,
-    frame: false,
-    alwaysOnTop: true,
-    webPreferences: {
-      preload: path.join(__dirname, 'scanner_preload.js')
-    }
-  });
-  scannerWin.loadFile('scanner.html');
-  scannerWin.on('closed', () => {
-    scannerWin = null;
-  });
-});
-
-ipcMain.on('set-scan-area', (event, area) => {
-  if (pendingScanType === 'voidCascade') {
-    settings.voidCascadeScanArea = area;
-  } else {
-    settings.scanArea = area;
-  }
-  saveSettings();
-  if (scannerWin) {
-    scannerWin.close();
-  }
-  win.webContents.send('scan-area-updated', {
-    normal: settings.scanArea,
-    voidCascade: settings.voidCascadeScanArea
-  });
-  if (settings.autoScanEnabled) {
-    startAutoScanner();
-  }
 });
 
 ipcMain.on('toggle-auto-scan', (event, enabled) => {
@@ -513,6 +497,7 @@ function createOSDWindow() {
     resizable: false,
     focusable: false,
     show: !(settings.ui && settings.ui.hideOSDWhenEmpty),
+    type: 'utility', // Helps Linux WMs treat this as a floating tool
     webPreferences: {
       preload: path.join(__dirname, 'osd_preload.js')
     }
@@ -548,6 +533,19 @@ function createTray() {
   tray = new Tray(iconPath);
   const contextMenu = Menu.buildFromTemplate([
     { label: 'Show App', click: () => win.show() },
+    { type: 'separator' },
+    { 
+      label: 'Hydration Reminder',
+      type: 'checkbox',
+      checked: settings.hydrationReminderEnabled,
+      click: (menuItem) => {
+        settings.hydrationReminderEnabled = menuItem.checked;
+        saveSettings();
+        updateHydrationTimer();
+        if (win) win.webContents.send('hydration-state-changed', menuItem.checked);
+      }
+    },
+    { type: 'separator' },
     { label: 'Quit', click: () => {
       isQuitting = true;
       app.quit();
@@ -586,123 +584,6 @@ function stopAutoScanner() {
 
   broadcastScannerStatus();
 }
-
-async function getScreenCapture(area) {
-  if (!area) return null;
-  try {
-    const primaryDisplay = screen.getPrimaryDisplay();
-    const { width, height } = primaryDisplay.size;
-    const scaleFactor = primaryDisplay.scaleFactor;
-    const sources = await desktopCapturer.getSources({
-      types: ['screen'],
-      thumbnailSize: { width: width * scaleFactor, height: height * scaleFactor }
-    });
-    const primaryScreenSource = sources.find(source => source.display_id === primaryDisplay.id.toString());
-    if (!primaryScreenSource) return null;
-    
-    const scaledArea = {
-      x: Math.round(area.x * scaleFactor),
-      y: Math.round(area.y * scaleFactor),
-      width: Math.round(area.width * scaleFactor),
-      height: Math.round(area.height * scaleFactor)
-    };
-    return primaryScreenSource.thumbnail.crop(scaledArea);
-  } catch (e) {
-    console.error("Capture error:", e);
-    return null;
-  }
-}
-
-async function scanScreen() {
-  if (isScanning) return;
-  isScanning = true;
-  const currentArea = settings.voidCascadeMode ? settings.voidCascadeScanArea : settings.scanArea;
-  if (!currentArea || !win) {
-    isScanning = false;
-    return;
-  }
-  try {
-    let image = await getScreenCapture(currentArea);
-    if (!image) return;
-    
-    // Upscale image to improve OCR accuracy
-    const size = image.getSize();
-    image = image.resize({ width: size.width * 2, height: size.height * 2 });
-
-    if (!worker) {
-      worker = await createWorker('eng');
-      await worker.setParameters({
-        tessedit_pageseg_mode: '7', // Treat image as a single text line
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ', // Only recognize uppercase letters and spaces
-      });
-    }
-
-    const { data: { text } } = await worker.recognize(image.toPNG());
-    const upperText = text.toUpperCase();
-    console.log(`[Scanner] ${upperText.replace(/\s+/g, ' ')}`);
-
-    let detected = false;
-    const cleanText = upperText.replace(/\s+/g, '');
-
-    if (settings.voidCascadeMode) {
-      // Flexible regex to handle OCR errors like "RENE" and "RECHT"
-      if (/SELECTA?RE[LCN][IHE][CTE]/.test(cleanText)) detected = true;
-    } else if (upperText.includes("MISSION COMPLETE")) {
-      detected = true;
-    }
-
-    if (detected) {      
-      triggerDetection('Visual Scanner', true);
-    }
-  } catch (error) {
-    console.error('Auto-scan error:', error);
-  } finally {
-    isScanning = false;
-  }
-}
-
-ipcMain.handle('test-scanner', async () => {
-  const currentArea = settings.voidCascadeMode ? settings.voidCascadeScanArea : settings.scanArea;
-  console.log('[Test Scanner] Area:', currentArea);
-  let image = await getScreenCapture(currentArea);
-  if (!image) return { error: "Could not capture screen. Check scan area." };
-
-  // Upscale image to improve OCR accuracy
-  const size = image.getSize();
-  image = image.resize({ width: size.width * 2, height: size.height * 2 });
-
-  if (!worker) {
-    worker = await createWorker('eng');
-    await worker.setParameters({
-      tessedit_pageseg_mode: '7',
-      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ',
-    });
-  }
-
-  const { data: { text } } = await worker.recognize(image.toPNG());
-  const upperText = text.toUpperCase();
-  const cleanText = upperText.replace(/\s+/g, '');
-  console.log('[Test Scanner] Raw:', text.trim(), '| Cleaned:', cleanText);
-
-  let match = false;
-  const currentModeIsCascade = settings.voidCascadeMode;
-  if (currentModeIsCascade) {
-    // Use the same flexible regex as the main scanner
-    if (/SELECTA?RE[LCN][IHE][CTE]/.test(cleanText)) match = true;
-  } else {
-    if (upperText.includes("MISSION COMPLETE")) {
-      match = true;
-    }
-  }
-
-  return { 
-    rawText: text.trim(),
-    processedText: cleanText,
-    match: match,
-    mode: currentModeIsCascade ? 'Void Cascade' : 'Normal',
-    image: image.toDataURL() 
-  };
-});
 
 ipcMain.handle('test-log-reader', async () => {
   try {
@@ -751,7 +632,15 @@ const LOGIN_REGEX = /Logged in .* \((.+?)\)/;
 function findLocalPlayerId() {
   try {
     if (!fs.existsSync(logPath)) return;
-    const content = fs.readFileSync(logPath, 'utf8');
+    const stats = fs.statSync(logPath);
+    // Read last 2MB of the log to find the player ID. Should be more than enough and memory-efficient.
+    const readSize = Math.min(stats.size, 2 * 1024 * 1024); 
+    const buffer = Buffer.alloc(readSize);
+    const fd = fs.openSync(logPath, 'r');
+    fs.readSync(fd, buffer, 0, readSize, stats.size - readSize);
+    fs.closeSync(fd);
+
+    const content = buffer.toString('utf8');
     const matches = [...content.matchAll(/Logged in .* \((.+?)\)/g)];
     if (matches.length > 0) {
       localPlayerId = matches[matches.length - 1][1];
@@ -762,14 +651,8 @@ function findLocalPlayerId() {
 
 function findInitialState() {
   try {
-    if (!fs.existsSync(logPath)) return;
-    const stats = fs.statSync(logPath);
-    // Read last 5MB to find recent state
-    const readSize = Math.min(stats.size, 5 * 1024 * 1024); 
-    const buffer = Buffer.alloc(readSize);
-    const fd = fs.openSync(logPath, 'r');
-    fs.readSync(fd, buffer, 0, readSize, stats.size - readSize);
-    fs.closeSync(fd);
+    // This function is a stub now. It previously read the log for initial state (like traces).
+    // It's kept in case we need to find other initial states from the log in the future.
   } catch (e) { console.error("Error finding initial state:", e); }
 }
 
@@ -783,12 +666,12 @@ function checkLogUpdates() {
     const currentSize = stats.size;
 
     if (currentSize > lastLogSize) {
-      const diff = currentSize - lastLogSize;
+      // Calculate read range with overlap to handle split lines
+      let startRead = Math.max(0, lastLogSize - OVERLAP_SIZE);
+      let bytesToRead = currentSize - startRead;
       
-      let startRead = lastLogSize;
-      let bytesToRead = diff;
-      
-      if (diff > MAX_READ_SIZE) { 
+      // Cap at buffer size, prioritizing recent data
+      if (bytesToRead > MAX_READ_SIZE) { 
         startRead = currentSize - MAX_READ_SIZE;
         bytesToRead = MAX_READ_SIZE;
       }
@@ -804,8 +687,20 @@ function checkLogUpdates() {
         if (fd) fs.closeSync(fd);
       }
 
+      // Calculate the boundary index in the buffer where new data begins
+      // Any match fully before this index is "old" data we re-read for context
+      const newContentStartIndex = lastLogSize - startRead;
       lastLogSize = currentSize;
+      
       const content = sharedLogBuffer.toString('utf8', 0, bytesRead);
+
+      // Helper to check if a keyword exists in the NEW data (or crosses boundary)
+      const hasNewMatch = (keyword) => {
+        const lastIndex = content.lastIndexOf(keyword);
+        if (lastIndex === -1) return false;
+        // If the match ends after the new content started, it's valid
+        return (lastIndex + keyword.length > newContentStartIndex);
+      };
 
       // --- Run Summary: Detect Player ID & Rewards ---
       const loginMatch = LOGIN_REGEX.exec(content);
@@ -823,33 +718,38 @@ function checkLogUpdates() {
           lastFound = match;
         }
         if (lastFound && lastFound[1]) {
-          let relicName = lastFound[1].trim();
-          let rarity = lastFound[2] ? lastFound[2].trim() : 'INTACT';
-          rarity = rarity.charAt(0).toUpperCase() + rarity.slice(1).toLowerCase();
-          
-          if (win) win.webContents.send('detected-relic', `${relicName} ${rarity}`);
+          // Only update if this match is new/crossing boundary
+          if (lastFound.index + lastFound[0].length > newContentStartIndex) {
+            let relicName = lastFound[1].trim();
+            let rarity = lastFound[2] ? lastFound[2].trim() : 'INTACT';
+            rarity = rarity.charAt(0).toUpperCase() + rarity.slice(1).toLowerCase();
+            
+            if (win) win.webContents.send('detected-relic', `${relicName} ${rarity}`);
+          }
         }
       }
 
       // Optimization: Check content directly instead of splitting into lines
       
       // 1. Mission Failed (Check first for safety)
-      if (content.includes('Sys [Info]: Mission Failed')) {
+      if (hasNewMatch('Sys [Info]: Mission Failed')) {
          triggerDetection('Log (Mission Failed)', false);
          return;
       }
 
       if (settings.voidCascadeMode) {
-        if (content.includes('Script [Info]: ProjectionsCountdown.lua: Initialize timer')) {
+        if (hasNewMatch('Script [Info]: ProjectionsCountdown.lua: Initialize timer')) {
           triggerDetection('Log (Relic Selection)', true);
           return;
         }
       } else {
-        if (content.includes('Sys [Info]: Mission Success') || 
-            content.includes('MissionSummary.swf') || 
-            content.includes('LobbyMissionRewards') ||
-            content.includes('OnMissionComplete') ||
-            content.includes('EndOfMatch.lua: Mission Succeeded')) {
+        if (hasNewMatch('Sys [Info]: Mission Success') || 
+            hasNewMatch('MissionSummary.swf') || 
+            hasNewMatch('LobbyMissionRewards') ||
+            hasNewMatch('OnMissionComplete') ||
+            hasNewMatch('EndOfMatch.lua: Mission Succeeded') ||
+            hasNewMatch('CGame::SetMissionState: STATE_COMPLETE') ||
+            hasNewMatch('Distributor::CompleteMission')) {
           triggerDetection('Log (Mission Success)', true);
           return;
         }
@@ -877,44 +777,32 @@ function triggerDetection(source, isSuccess = true) {
   }, settings.autoScanPause * 1000);
 }
 
+function stopAutoScanner() {
+  if (autoScanInterval) clearInterval(autoScanInterval);
+  autoScanInterval = null;
+
+  if (logCheckInterval) clearInterval(logCheckInterval);
+  logCheckInterval = null;
+
+  broadcastScannerStatus();
+}
+
 function startAutoScanner() {
   stopAutoScanner();
   
-  // Use Log Scanner if enabled OR if Legacy Screen Scanner is disabled (forcing standard mode)
-  const useLog = settings.useLogScanner || !settings.enableLegacyScreenScanner;
+  // Auto-scanner now exclusively uses the log reader.
+  if (fs.existsSync(logPath)) {
+    const stats = fs.statSync(logPath);
+    lastLogSize = stats.size; // Start reading from NOW
+    logCheckInterval = setInterval(checkLogUpdates, 1000); // Check every 1s
+    broadcastScannerStatus();
+    console.log("Started Log Scanner.");
 
-  if (useLog) {
-    // --- LOG MODE ---
-    if (fs.existsSync(logPath)) {
-      const stats = fs.statSync(logPath);
-      lastLogSize = stats.size; // Start reading from NOW
-      logCheckInterval = setInterval(checkLogUpdates, 1000); // Check every 1s
-      broadcastScannerStatus();
-      console.log("Started Log Scanner.");
-
-      // Attempt to find player ID if not already known
-      if (!localPlayerId) findLocalPlayerId();
-      findInitialState();
-
-      // Free up memory if Tesseract worker was active
-      if (worker) {
-        worker.terminate().catch(e => console.error("Error terminating worker:", e));
-        worker = null;
-        console.log("Terminated background OCR worker to save memory.");
-      }
-    } else {
-      console.error("EE.log not found at", logPath);
-    }
+    // Attempt to find player ID if not already known
+    if (!localPlayerId) findLocalPlayerId();
+    findInitialState();
   } else {
-    // --- VISUAL MODE ---
-    const currentArea = settings.voidCascadeMode ? settings.voidCascadeScanArea : settings.scanArea;
-    if (currentArea) {
-      const interval = settings.voidCascadeMode 
-        ? (settings.scanIntervalCascade * 1000) 
-        : (settings.scanIntervalNormal * 1000);
-      autoScanInterval = setInterval(scanScreen, interval);
-      broadcastScannerStatus();
-    }
+    console.error("EE.log not found at", logPath);
   }
 }
 

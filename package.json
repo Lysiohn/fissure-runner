@@ -1,21 +1,32 @@
 {
   "name": "fissure-runner",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "description": "Warframe Fissure Runner",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder",
+    "build:win": "electron-builder --win --publish always",
+    "build:linux": "electron-builder --linux --publish always"
   },
   "build": {
     "appId": "com.lysi.fissurerunner",
     "productName": "Fissure Runner",
+    "asar": true,
     "directories": {
       "output": "dist-installer"
     },
     "win": {
       "target": "nsis",
       "icon": "icon.ico"
+    },
+    "linux": {
+      "target": [
+        "pacman",
+        "AppImage"
+      ],
+      "icon": "icon.png",
+      "category": "Game"
     },
     
     "nsis": {
@@ -38,9 +49,6 @@
       "!dist-installer/**",
       "!*.exe",
       "!*.zip"
-    ],
-    "asarUnpack": [
-      "**/node_modules/tesseract.js-core/**/*"
     ]
   },
   "keywords": [],
@@ -48,12 +56,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "electron-updater": "^6.7.3",
-    "tesseract.js": "^7.0.0"
+    "electron-updater": "^6.7.3"
   },
   "devDependencies": {
     "electron": "^40.0.0",
-    "electron-builder": "^26.4.0",
-    "electron-packager": "^17.1.2"
+    "electron-builder": "^26.4.0"
   }
 }

@@ -299,6 +299,14 @@
       border-radius: 4px;
       font-size: 0.8rem;
     }
+    
+    .hotkey-clear-btn {
+      background: transparent;
+      border: 1px solid #3f3f46;
+      color: #a1a1aa;
+      cursor: pointer;
+      padding: 2px 6px;
+    }
 
     .record-btn {
       width: 100%;
@@ -764,10 +772,65 @@
       opacity: 1;
       transform: translateX(-50%) translateY(0);
     }
+
+    /* Corner Flag */
+    .corner-flag {
+      position: fixed;
+      bottom: 30px;
+      width: 200px;
+      height: 35px;
+      z-index: 499; /* Below settings buttons (z-index: 500) */
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+      pointer-events: none;
+      display: none;
+    }
+    .corner-flag.left {
+      left: -50px;
+      transform: rotate(45deg);
+    }
+    .corner-flag.right {
+      right: -50px;
+      transform: rotate(-45deg);
+    }
+    
+    .corner-flag.theme-rainbow { background: linear-gradient(90deg, #e40303 0% 16.66%, #ff8c00 16.66% 33.33%, #ffed00 33.33% 50%, #008026 50% 66.66%, #004dff 66.66% 83.33%, #750787 83.33% 100%); }
+    .corner-flag.theme-trans { background: linear-gradient(90deg, #5bcefa 0% 20%, #f5a9b8 20% 40%, #ffffff 40% 60%, #f5a9b8 60% 80%, #5bcefa 80% 100%); }
+    .corner-flag.theme-lesbian { background: linear-gradient(90deg, #d52d00 0% 14.28%, #ef7627 14.28% 28.56%, #ff9a56 28.56% 42.84%, #ffffff 42.84% 57.12%, #d162a4 57.12% 71.4%, #b55690 71.4% 85.68%, #a30262 85.68% 100%); }
+    .corner-flag.theme-bi { background: linear-gradient(90deg, #d00070 0% 40%, #8c4799 40% 60%, #0032a0 60% 100%); }
+    .corner-flag.theme-pan { background: linear-gradient(90deg, #ff218c 0% 33.33%, #ffd800 33.33% 66.66%, #21b1ff 66.66% 100%); }
+    .corner-flag.theme-ace { background: linear-gradient(90deg, #000000 0% 25%, #a3a3a3 25% 50%, #ffffff 50% 75%, #800080 75% 100%); }
+    .corner-flag.theme-enby { background: linear-gradient(90deg, #fcf434 0% 25%, #ffffff 25% 50%, #9c59d1 50% 75%, #2c2c2c 75% 100%); }
+    .corner-flag.theme-genderqueer { background: linear-gradient(90deg, #b57edc 0% 33.33%, #ffffff 33.33% 66.66%, #4a8123 66.66% 100%); }
+    .corner-flag.theme-agender { background: linear-gradient(90deg, #000000 0% 14.28%, #b9b9b9 14.28% 28.56%, #ffffff 28.56% 42.84%, #b8f483 42.84% 57.12%, #ffffff 57.12% 71.4%, #b9b9b9 71.4% 85.68%, #000000 85.68% 100%); }
+    .corner-flag.theme-aro { background: linear-gradient(90deg, #3da542 0% 20%, #a7d379 20% 40%, #ffffff 40% 60%, #a9a9a9 60% 80%, #000000 80% 100%); }
+    .corner-flag.theme-fluid { background: linear-gradient(90deg, #ff75a2 0% 20%, #ffffff 20% 40%, #be18d6 40% 60%, #000000 60% 80%, #333ebd 80% 100%); }
+    .corner-flag.theme-poly { background: linear-gradient(90deg, #f61cb9 0% 33.33%, #07d569 33.33% 66.66%, #1c92f6 66.66% 100%); }
+    .corner-flag.theme-omni { background: linear-gradient(90deg, #fe9ace 0% 20%, #ff53bf 20% 40%, #200044 40% 60%, #6760fe 60% 80%, #8ea6ff 80% 100%); }
+    .corner-flag.theme-mlm { background: linear-gradient(90deg, #078d70 0% 14.28%, #26ceaa 14.28% 28.56%, #98e8c1 28.56% 42.84%, #ffffff 42.84% 57.12%, #7bade2 57.12% 71.4%, #5049cc 71.4% 85.68%, #3d1a78 85.68% 100%); }
+    .corner-flag.theme-demiboy { background: linear-gradient(90deg, #7f7f7f 0% 14.28%, #c4c4c4 14.28% 28.56%, #9ad9eb 28.56% 42.84%, #ffffff 42.84% 57.12%, #9ad9eb 57.12% 71.4%, #c4c4c4 71.4% 85.68%, #7f7f7f 85.68% 100%); }
+    .corner-flag.theme-demigirl { background: linear-gradient(90deg, #7f7f7f 0% 14.28%, #c4c4c4 14.28% 28.56%, #ff6d96 28.56% 42.84%, #ffffff 42.84% 57.12%, #ff6d96 57.12% 71.4%, #c4c4c4 71.4% 85.68%, #7f7f7f 85.68% 100%); }
+    .corner-flag.theme-rainbow { background: linear-gradient(180deg, #e40303 0% 16.66%, #ff8c00 16.66% 33.33%, #ffed00 33.33% 50%, #008026 50% 66.66%, #004dff 66.66% 83.33%, #750787 83.33% 100%); }
+    .corner-flag.theme-trans { background: linear-gradient(180deg, #5bcefa 0% 20%, #f5a9b8 20% 40%, #ffffff 40% 60%, #f5a9b8 60% 80%, #5bcefa 80% 100%); }
+    .corner-flag.theme-lesbian { background: linear-gradient(180deg, #d52d00 0% 14.28%, #ef7627 14.28% 28.56%, #ff9a56 28.56% 42.84%, #ffffff 42.84% 57.12%, #d162a4 57.12% 71.4%, #b55690 71.4% 85.68%, #a30262 85.68% 100%); }
+    .corner-flag.theme-bi { background: linear-gradient(180deg, #d00070 0% 40%, #8c4799 40% 60%, #0032a0 60% 100%); }
+    .corner-flag.theme-pan { background: linear-gradient(180deg, #ff218c 0% 33.33%, #ffd800 33.33% 66.66%, #21b1ff 66.66% 100%); }
+    .corner-flag.theme-ace { background: linear-gradient(180deg, #000000 0% 25%, #a3a3a3 25% 50%, #ffffff 50% 75%, #800080 75% 100%); }
+    .corner-flag.theme-enby { background: linear-gradient(180deg, #fcf434 0% 25%, #ffffff 25% 50%, #9c59d1 50% 75%, #2c2c2c 75% 100%); }
+    .corner-flag.theme-genderqueer { background: linear-gradient(180deg, #b57edc 0% 33.33%, #ffffff 33.33% 66.66%, #4a8123 66.66% 100%); }
+    .corner-flag.theme-agender { background: linear-gradient(180deg, #000000 0% 14.28%, #b9b9b9 14.28% 28.56%, #ffffff 28.56% 42.84%, #b8f483 42.84% 57.12%, #ffffff 57.12% 71.4%, #b9b9b9 71.4% 85.68%, #000000 85.68% 100%); }
+    .corner-flag.theme-aro { background: linear-gradient(180deg, #3da542 0% 20%, #a7d379 20% 40%, #ffffff 40% 60%, #a9a9a9 60% 80%, #000000 80% 100%); }
+    .corner-flag.theme-fluid { background: linear-gradient(180deg, #ff75a2 0% 20%, #ffffff 20% 40%, #be18d6 40% 60%, #000000 60% 80%, #333ebd 80% 100%); }
+    .corner-flag.theme-poly { background: linear-gradient(180deg, #f61cb9 0% 33.33%, #07d569 33.33% 66.66%, #1c92f6 66.66% 100%); }
+    .corner-flag.theme-omni { background: linear-gradient(180deg, #fe9ace 0% 20%, #ff53bf 20% 40%, #200044 40% 60%, #6760fe 60% 80%, #8ea6ff 80% 100%); }
+    .corner-flag.theme-mlm { background: linear-gradient(180deg, #078d70 0% 14.28%, #26ceaa 14.28% 28.56%, #98e8c1 28.56% 42.84%, #ffffff 42.84% 57.12%, #7bade2 57.12% 71.4%, #5049cc 71.4% 85.68%, #3d1a78 85.68% 100%); }
+    .corner-flag.theme-demiboy { background: linear-gradient(180deg, #7f7f7f 0% 14.28%, #c4c4c4 14.28% 28.56%, #9ad9eb 28.56% 42.84%, #ffffff 42.84% 57.12%, #9ad9eb 57.12% 71.4%, #c4c4c4 71.4% 85.68%, #7f7f7f 85.68% 100%); }
+    .corner-flag.theme-demigirl { background: linear-gradient(180deg, #7f7f7f 0% 14.28%, #c4c4c4 14.28% 28.56%, #ff6d96 28.56% 42.84%, #ffffff 42.84% 57.12%, #ff6d96 57.12% 71.4%, #c4c4c4 71.4% 85.68%, #7f7f7f 85.68% 100%); }
+    .corner-flag.theme-white { background: #ffffff; }
   </style>
 </head>
 
 <body>
+  <div id="cornerFlag" class="corner-flag left"></div>
   <div class="app-container" id="layoutContainer">
     <!-- Column 2 -->
     <div id="col-2" class="layout-column">
@@ -868,7 +931,7 @@
             </div>
             <div class="scanner-row" style="margin-top: 0.5rem;">
               <label for="osdOpacity">Background Opacity</label>
-              <input type="range" id="osdOpacity" min="0.2" max="1" step="0.1" style="width: 100px; accent-color: #6366f1;">
+              <input type="range" id="osdOpacity" min="0" max="1" step="0.1" style="width: 100px; accent-color: #6366f1;">
             </div>
             <div class="scanner-row">
               <label for="osdScale">Size</label>
@@ -877,6 +940,10 @@
             <div class="scanner-row" style="margin-top: 0.5rem;">
               <label for="osdLockToggle" style="cursor: pointer;">Lock Position (Click-through)</label>
               <input type="checkbox" id="osdLockToggle" style="cursor: pointer;" />
+            </div>
+            <div class="scanner-row" style="margin-top: 0.5rem;">
+              <label for="osdHideBorderToggle" style="cursor: pointer;">Hide Border (Show on Hover)</label>
+              <input type="checkbox" id="osdHideBorderToggle" style="cursor: pointer;" />
             </div>
             <div class="scanner-row" style="margin-top: 0.5rem;">
               <label for="osdClockToggle" style="cursor: pointer;">Show System Clock</label>
@@ -945,12 +1012,12 @@
             <div id="updateStatus" style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.5rem; text-align: center;"></div>
             <button id="viewPatchNotesBtn" class="record-btn" style="margin-top: 0.5rem;">View Patch Notes (Latest)</button>
             <div id="patchNotesContent" style="display:none; background:#121214; padding:1rem; margin-top:0.5rem; border-radius:4px; font-size:0.8rem; color:#a1a1aa; max-height:200px; overflow-y:auto; border: 1px solid #27272a;">
-                <h4 style="color:#fff; margin-top:0; margin-bottom:0.5rem;">v1.7.3 - Reliability & Linux Support</h4>
+                <h4 style="color:#fff; margin-top:0; margin-bottom:0.5rem;">v1.8.0 - Pride & Customization Update</h4>
                 <ul style="padding-left:1.2rem; margin:0; display:flex; flex-direction:column; gap:0.25rem;">
-                    <li><strong>Scanner Reliability:</strong> Improved log reading to prevent missed mission completions.</li>
-                    <li><strong>Hydration Reminder:</strong> Now runs in the background for better reliability and includes a Tray toggle.</li>
-                    <li><strong>Linux Support:</strong> Added automatic path detection for Proton/Steam and build targets for Arch/AppImage.</li>
-                    <li><strong>Fixes:</strong> Auto-relic detection now only updates when "Running relic" is active.</li>
+                    <li><strong>Corner Flag:</strong> Added a customizable pride flag (toggleable, positionable).</li>
+                    <li><strong>Hydration Customization:</strong> Added custom themes and messages for the hydration popup.</li>
+                    <li><strong>4b4 Logic:</strong> "Start" button now defaults to "Running relic" in 4b4 mode.</li>
+                    <li><strong>UI Improvements:</strong> Settings menu organization and visual tweaks.</li>
                 </ul>
             </div>
             <div class="divider"></div>
@@ -962,15 +1029,11 @@
           <summary>Hotkey Settings</summary>
           <div class="group-content">
             <div class="hotkey-row">
-              <span class="hotkey-label">Current Hotkey:</span>
-              <span id="currentHotkey" class="hotkey-value"></span>
-            </div>
-            <div class="hotkey-row">
-              <label for="hotkeyEnabledToggle" style="cursor: pointer; color: #a1a1aa;">Enable Hotkey</label>
+              <label for="hotkeyEnabledToggle" style="cursor: pointer; color: #a1a1aa;">Enable Hotkeys (App Focused Only)</label>
               <input type="checkbox" id="hotkeyEnabledToggle" style="cursor: pointer;" />
             </div>
-            <button id="recordHotkeyBtn" class="record-btn">Record New Hotkey</button>
-            <div id="recordStatus" class="record-status">Press any key…</div>
+            <div id="keybindsList" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;"></div>
+            <div id="recordStatus" class="record-status" style="margin-top: 0.5rem;">Press any key…</div>
           </div>
         </details>
 
@@ -983,8 +1046,9 @@
         </details>
 
         <details class="settings-group">
-          <summary>Hydration Reminder</summary>
+          <summary>Audio & Notifications</summary>
           <div class="group-content">
+            <div class="filter-section-title" style="margin-top:0;">Hydration Reminder</div>
             <div class="scanner-row">
               <label for="hydrationToggle" style="cursor: pointer;">Enable Reminder</label>
               <input type="checkbox" id="hydrationToggle" style="cursor: pointer;" />
@@ -992,6 +1056,32 @@
             <div class="scanner-row" style="margin-top: 0.5rem;">
               <label for="osdHydrationToggle" style="cursor: pointer;">Show on OSD</label>
               <input type="checkbox" id="osdHydrationToggle" style="cursor: pointer;" />
+            </div>
+            <div class="scanner-row" style="margin-top: 0.5rem;">
+              <label for="hydrationTheme">Popup Theme</label>
+              <select id="hydrationTheme" style="background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px; outline: none; font-size: 0.85rem;">
+                <option value="rainbow">Pride (Rainbow)</option>
+                <option value="trans">Trans</option>
+                <option value="lesbian">Lesbian</option>
+                <option value="bi">Bi</option>
+                <option value="pan">Pan</option>
+                <option value="ace">Asexual</option>
+                <option value="enby">Non-Binary</option>
+                <option value="genderqueer">Genderqueer</option>
+                <option value="agender">Agender</option>
+                <option value="aro">Aromantic</option>
+                <option value="fluid">Genderfluid</option>
+                <option value="poly">Polysexual</option>
+                <option value="omni">Omnisexual</option>
+                <option value="mlm">Gay (MLM)</option>
+                <option value="demiboy">Demiboy</option>
+                <option value="demigirl">Demigirl</option>
+                <option value="white">Static White</option>
+              </select>
+            </div>
+            <div class="scanner-row" style="margin-top: 0.5rem;">
+              <label for="hydrationMessage">Message</label>
+              <input type="text" id="hydrationMessage" style="width: 150px; background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px; font-size: 0.85rem;" placeholder="HYDRATE OR DIE STRAIGHT!">
             </div>
             <div class="scanner-row" style="margin-top: 0.5rem;">
               <label for="hydrationIntervalInput">Interval (minutes)</label>
@@ -1012,12 +1102,94 @@
               <input type="range" id="hydrationVolume" min="0" max="1" step="0.01" style="width: 100px; accent-color: #6366f1;">
             </div>
             <button id="testPopupBtn" class="record-btn" style="margin-top: 0.5rem;">Test Popup Now</button>
+
+            <div class="divider"></div>
+            <div class="filter-section-title">Next Button Sound</div>
+            <div class="scanner-row">
+              <label for="nextSoundToggle" style="cursor: pointer;">Enable Sound</label>
+              <input type="checkbox" id="nextSoundToggle" style="cursor: pointer;" />
+            </div>
+            <div class="scanner-row" style="margin-top: 0.5rem; flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+              <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                <span style="color:#a1a1aa; font-size:0.9rem;">Sound:</span>
+                <span id="nextSoundName" style="color:#fff; font-size:0.8rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Default</span>
+              </div>
+              <div style="display:flex; gap:0.5rem; width:100%;">
+                <button id="selectNextSoundBtn" class="refresh-btn" style="flex:1; padding:0.5rem;">Select File</button>
+                <button id="resetNextSoundBtn" class="refresh-btn" style="flex:0 0 auto; background:#ef4444; color:white; display:none; padding:0.5rem 0.8rem;">X</button>
+                <button id="testNextSoundBtn" class="refresh-btn" style="flex:0 0 auto; padding:0.5rem 0.8rem;">Test</button>
+              </div>
+            </div>
+            <div class="scanner-row" style="margin-top: 0.5rem;">
+              <label for="nextSoundVolume">Volume</label>
+              <input type="range" id="nextSoundVolume" min="0" max="1" step="0.01" style="width: 100px; accent-color: #6366f1;">
+            </div>
+
+            <div class="divider"></div>
+            <div class="filter-section-title">New Fissure Sound</div>
+            <div class="scanner-row">
+              <label for="fissureSoundToggle" style="cursor: pointer;">Enable Sound (Filtered)</label>
+              <input type="checkbox" id="fissureSoundToggle" style="cursor: pointer;" />
+            </div>
+            <div class="scanner-row" style="margin-top: 0.5rem; flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+              <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                <span style="color:#a1a1aa; font-size:0.9rem;">Sound:</span>
+                <span id="fissureSoundName" style="color:#fff; font-size:0.8rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Default</span>
+              </div>
+              <div style="display:flex; gap:0.5rem; width:100%;">
+                <button id="selectFissureSoundBtn" class="refresh-btn" style="flex:1; padding:0.5rem;">Select File</button>
+                <button id="resetFissureSoundBtn" class="refresh-btn" style="flex:0 0 auto; background:#ef4444; color:white; display:none; padding:0.5rem 0.8rem;">X</button>
+                <button id="testFissureSoundBtn" class="refresh-btn" style="flex:0 0 auto; padding:0.5rem 0.8rem;">Test</button>
+              </div>
+            </div>
+            <div class="scanner-row" style="margin-top: 0.5rem;">
+              <label for="fissureSoundVolume">Volume</label>
+              <input type="range" id="fissureSoundVolume" min="0" max="1" step="0.01" style="width: 100px; accent-color: #6366f1;">
+            </div>
           </div>
         </details>
 
         <details class="settings-group">
-          <summary>Layout Customization</summary>
+          <summary>Appearance & Layout</summary>
           <div class="group-content">
+            <div class="filter-section-title" style="margin-top:0;">Corner Flag</div>
+            <div class="scanner-row">
+              <label for="flagEnabledToggle" style="cursor: pointer;">Enable Corner Flag</label>
+              <input type="checkbox" id="flagEnabledToggle" style="cursor: pointer;" />
+            </div>
+            <div class="scanner-row">
+              <label for="flagTheme">Flag Theme</label>
+              <select id="flagTheme" style="background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px; outline: none; font-size: 0.85rem;">
+                <option value="rainbow">Pride (Rainbow)</option>
+                <option value="trans">Trans</option>
+                <option value="lesbian">Lesbian</option>
+                <option value="bi">Bi</option>
+                <option value="pan">Pan</option>
+                <option value="ace">Asexual</option>
+                <option value="enby">Non-Binary</option>
+                <option value="genderqueer">Genderqueer</option>
+                <option value="agender">Agender</option>
+                <option value="aro">Aromantic</option>
+                <option value="fluid">Genderfluid</option>
+                <option value="poly">Polysexual</option>
+                <option value="omni">Omnisexual</option>
+                <option value="mlm">Gay (MLM)</option>
+                <option value="demiboy">Demiboy</option>
+                <option value="demigirl">Demigirl</option>
+                <option value="white">Static White</option>
+              </select>
+            </div>
+            <div class="scanner-row" style="margin-top: 0.5rem;">
+              <label for="flagPosition">Position</label>
+              <select id="flagPosition" style="background: #27272a; border: 1px solid #3f3f46; color: #e4e4e7; border-radius: 4px; padding: 2px 5px; outline: none; font-size: 0.85rem;">
+                <option value="left">Bottom Left</option>
+                <option value="right">Bottom Right</option>
+              </select>
+            </div>
+
+            <div class="divider"></div>
+            <div class="filter-section-title">Layout</div>
+
             <div class="scanner-row">
               <label for="editLayoutToggle" style="cursor: pointer;">Edit Layout (Drag & Drop)</label>
               <input type="checkbox" id="editLayoutToggle" style="cursor: pointer;" />
@@ -1094,7 +1266,7 @@
         if (window.electronAPI && window.electronAPI.setRotationMode) {
           window.electronAPI.setRotationMode(currentMode);
           cycleStep = 0; // Reset step on mode change
-          updateStartRelicFor1b1();
+          updateStartRelicState();
         }
         update1b1Visibility();
       });
@@ -1108,7 +1280,7 @@
         if (window.electronAPI && window.electronAPI.set1b1Position) {
           window.electronAPI.set1b1Position(runningPosition);
         }
-        updateStartRelicFor1b1();
+        updateStartRelicState();
       });
     });
 
@@ -1116,15 +1288,14 @@
       settings1b1.style.display = currentMode === "1b1" ? "block" : "none";
     }
 
-    function updateStartRelicFor1b1() {
-      if (currentMode === '1b1' && cycleStep === 0) {
+    function updateStartRelicState() {
+      if (currentMode === '4b4') {
+        startRelic = RUNNING;
+        startBtn.textContent = `Start: ${startRelic}`;
+      } else if (currentMode === '1b1' && cycleStep === 0) {
         // If we are at the start of a cycle, set the start relic based on position
         startRelic = (runningPosition === 1) ? RUNNING : TRASH;
         startBtn.textContent = `Start: ${startRelic}`;
-        if (upcoming !== null) {
-           // If user hasn't started yet but upcoming is set (e.g. reset), update it
-           // Note: usually upcoming is null until start is clicked, but this keeps UI consistent
-        }
       }
     }
 
@@ -1148,7 +1319,11 @@
     });
 
     startBtn.addEventListener("click", () => {
-      startRelic = startRelic === RUNNING ? TRASH : RUNNING;
+      if (currentMode === '4b4') {
+        startRelic = RUNNING;
+      } else {
+        startRelic = startRelic === RUNNING ? TRASH : RUNNING;
+      }
       startBtn.textContent = `Start: ${startRelic}`;
       if (upcoming !== null) {
         upcoming = startRelic;
@@ -1206,6 +1381,7 @@
 
       nextEl.textContent = upcoming;
       broadcastOSD(); // cycleStateEl is already updated above
+      playNextSound();
     });
 
     resetBtn.addEventListener("click", () => {
@@ -1225,17 +1401,87 @@
 
       broadcastOSD();
 
-      updateStartRelicFor1b1();
+      updateStartRelicState();
     });
 
     /* --- HOTKEY UI LOGIC --- */
 
-    const recordBtn = document.getElementById("recordHotkeyBtn");
     const recordStatus = document.getElementById("recordStatus");
-    const currentHotkeyEl = document.getElementById("currentHotkey");
     const hotkeyEnabledToggle = document.getElementById("hotkeyEnabledToggle");
+    const keybindsList = document.getElementById("keybindsList");
 
-    let recording = false;
+    let recordingAction = null;
+    const keybinds = {
+      next: "Right",
+      start: "",
+      reset: "",
+      cascade: "",
+      mode4b4: "",
+      mode2b2: "",
+      mode1b1: ""
+    };
+    const globalKeybinds = {
+      next: false,
+      start: false,
+      reset: false,
+      cascade: false,
+      mode4b4: false,
+      mode2b2: false,
+      mode1b1: false
+    };
+
+    const keybindConfig = [
+      { id: 'next', label: 'Next Relic' },
+      { id: 'start', label: 'Start Cycle' },
+      { id: 'reset', label: 'Reset Cycle' },
+      { id: 'cascade', label: 'Toggle Cascade' },
+      { id: 'mode4b4', label: 'Set Mode 4b4' },
+      { id: 'mode2b2', label: 'Set Mode 2b2' },
+      { id: 'mode1b1', label: 'Set Mode 1b1' }
+    ];
+
+    function renderKeybinds() {
+      keybindsList.innerHTML = "";
+      keybindConfig.forEach(conf => {
+        const row = document.createElement("div");
+        row.className = "hotkey-row";
+        row.style.marginBottom = "0";
+        
+        const currentKey = keybinds[conf.id] || "Unset";
+        const isUnset = !keybinds[conf.id];
+        const isGlobal = globalKeybinds[conf.id] || false;
+
+        row.innerHTML = `
+          <span class="hotkey-label" style="font-size:0.85rem;">${conf.label}</span>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <label style="display:flex; align-items:center; gap:4px; font-size:0.75rem; color:#a1a1aa; cursor:pointer;" title="Enable Global Hotkey">
+               <input type="checkbox" ${isGlobal ? 'checked' : ''} onchange="toggleGlobal('${conf.id}', this.checked)"> Global
+            </label>
+            <span class="hotkey-value" style="${isUnset ? 'background:#27272a; color:#71717a;' : ''}">${currentKey}</span>
+            <button class="refresh-btn" style="padding:2px 8px;" onclick="startRecording('${conf.id}')">Rec</button>
+            <button class="hotkey-clear-btn" onclick="clearKeybind('${conf.id}')" title="Unset">✕</button>
+          </div>
+        `;
+        keybindsList.appendChild(row);
+      });
+    }
+
+    window.toggleGlobal = (action, checked) => {
+      globalKeybinds[action] = checked;
+      if (window.electronAPI) window.electronAPI.setKeybind(action, undefined, checked);
+    };
+
+    window.startRecording = (action) => {
+      recordingAction = action;
+      recordStatus.classList.add("recording");
+      recordStatus.textContent = `Recording for ${keybindConfig.find(c => c.id === action).label}... Press any key`;
+    };
+
+    window.clearKeybind = (action) => {
+      keybinds[action] = "";
+      if (window.electronAPI) window.electronAPI.setKeybind(action, "", globalKeybinds[action]);
+      renderKeybinds();
+    };
 
     hotkeyEnabledToggle.addEventListener("change", () => {
       if (window.electronAPI && window.electronAPI.setHotkeyEnabled) {
@@ -1243,64 +1489,84 @@
       }
     });
 
-    recordBtn.addEventListener("click", () => {
-      recording = true;
-      recordStatus.classList.add("recording");
-      recordStatus.textContent = "Listening… press any key";
-    });
+    function performAction(action) {
+      if (action === 'next') nextBtn.click();
+      if (action === 'start') startBtn.click();
+      if (action === 'reset') resetBtn.click();
+      if (action === 'cascade') cascadeBtn.click();
+      if (action === 'mode4b4') document.querySelector('button[data-mode="4b4"]').click();
+      if (action === 'mode2b2') document.querySelector('button[data-mode="2b2"]').click();
+      if (action === 'mode1b1') document.querySelector('button[data-mode="1b1"]').click();
+    }
 
     document.addEventListener("keydown", (e) => {
-      if (!recording) return;
-
-      e.preventDefault();
-
-      // Ignore presses of only modifier keys
-      if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) {
+      // F5 Refresh (Standard)
+      if (e.key === 'F5') {
+        e.preventDefault();
+        loadFissures();
         return;
       }
 
-      let newHotkey = e.key;
+      if (recordingAction) {
+        e.preventDefault();
+        if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
 
-      // Map Arrow keys
-      if (newHotkey === "ArrowUp") newHotkey = "Up";
-      if (newHotkey === "ArrowDown") newHotkey = "Down";
-      if (newHotkey === "ArrowLeft") newHotkey = "Left";
-      if (newHotkey === "ArrowRight") newHotkey = "Right";
+        let newKey = e.key;
+        if (newKey === "ArrowUp") newKey = "Up";
+        if (newKey === "ArrowDown") newKey = "Down";
+        if (newKey === "ArrowLeft") newKey = "Left";
+        if (newKey === "ArrowRight") newKey = "Right";
+        if (newKey === " ") newKey = "Space";
+        if (newKey.length === 1) newKey = newKey.toUpperCase();
+        if (newKey === "~") newKey = "Shift+`";
+        if (newKey === "`") newKey = "`";
 
-      // Fix Space key
-      if (newHotkey === " ") newHotkey = "Space";
-
-      // Only uppercase single characters, leave special keys (PageDown, F1, etc.) alone
-      if (newHotkey.length === 1) {
-        newHotkey = newHotkey.toUpperCase();
+        keybinds[recordingAction] = newKey;
+        if (window.electronAPI) window.electronAPI.setKeybind(recordingAction, newKey, globalKeybinds[recordingAction]);
+        
+        renderKeybinds();
+        recordStatus.textContent = "Saved!";
+        recordStatus.classList.remove("recording");
+        recordingAction = null;
+        return;
       }
 
-      // Fix tilde/backtick
-      if (newHotkey === "~") newHotkey = "Shift+`";
-      if (newHotkey === "`") newHotkey = "`";
+      // Handle Hotkey Actions (Only if enabled)
+      if (hotkeyEnabledToggle.checked) {
+        // Map key to action
+        let pressedKey = e.key;
+        if (pressedKey === "ArrowUp") pressedKey = "Up";
+        if (pressedKey === "ArrowDown") pressedKey = "Down";
+        if (pressedKey === "ArrowLeft") pressedKey = "Left";
+        if (pressedKey === "ArrowRight") pressedKey = "Right";
+        if (pressedKey === " ") pressedKey = "Space";
+        if (pressedKey.length === 1) pressedKey = pressedKey.toUpperCase();
+        if (pressedKey === "~") pressedKey = "Shift+`";
+        if (pressedKey === "`") pressedKey = "`";
 
-
-      currentHotkeyEl.textContent = newHotkey;
-      recordStatus.textContent = "Saved!";
-      recordStatus.classList.remove("recording");
-
-      if (window.electronAPI) {
-        window.electronAPI.setHotkey(newHotkey);
+        // Check matches
+        for (const [action, key] of Object.entries(keybinds)) {
+          if (key === pressedKey) {
+            performAction(action);
+            return;
+          }
+        }
       }
-
-      recording = false;
     });
 
     if (window.electronAPI) {
-      window.electronAPI.onHotkeyNext(() => {
-        nextBtn.click();
+      window.electronAPI.onLoadKeybinds((event, data) => {
+        if (data) {
+          if (data.keybinds) Object.assign(keybinds, data.keybinds);
+          if (data.globalKeybinds) Object.assign(globalKeybinds, data.globalKeybinds);
+          renderKeybinds();
+        }
+      });
+      
+      window.electronAPI.onTriggerAction((event, action) => {
+        performAction(action);
       });
     }
-    if (window.electronAPI) {
-  window.electronAPI.onLoadHotkey((event, savedHotkey) => {
-    currentHotkeyEl.textContent = savedHotkey;
-  });
-}
 
 
     /* --- AUTO SCANNER LOGIC --- */
@@ -1360,6 +1626,7 @@
     const osdOpacityInput = document.getElementById('osdOpacity');
     const osdScaleInput = document.getElementById('osdScale');
     const osdLockToggle = document.getElementById('osdLockToggle');
+    const osdHideBorderToggle = document.getElementById('osdHideBorderToggle');
     const osdClockToggle = document.getElementById('osdClockToggle');
     const hideOSDWhenEmptyToggle = document.getElementById('hideOSDWhenEmptyToggle');
     
@@ -1413,6 +1680,10 @@
 
     osdLockToggle.addEventListener('change', () => {
       if (window.electronAPI) window.electronAPI.setOSDLocked(osdLockToggle.checked);
+    });
+
+    osdHideBorderToggle.addEventListener('change', () => {
+      if (window.electronAPI) window.electronAPI.setOSDHideBorder(osdHideBorderToggle.checked);
     });
 
     osdClockToggle.addEventListener('change', () => {
@@ -1533,6 +1804,38 @@
     /* --- HYDRATION REMINDER LOGIC --- */
     const hydrationToggle = document.getElementById('hydrationToggle');
     const osdHydrationToggle = document.getElementById('osdHydrationToggle');
+    const hydrationThemeSelect = document.getElementById('hydrationTheme');
+    const hydrationMessageInput = document.getElementById('hydrationMessage');
+    const flagThemeSelect = document.getElementById('flagTheme');
+    const flagEnabledToggle = document.getElementById('flagEnabledToggle');
+    const flagPositionSelect = document.getElementById('flagPosition');
+    const cornerFlag = document.getElementById('cornerFlag');
+
+    function updateCornerFlag() {
+      if (!cornerFlag) return;
+      if (!flagEnabledToggle.checked) {
+        cornerFlag.style.display = 'none';
+        return;
+      }
+      cornerFlag.style.display = 'block';
+      cornerFlag.className = `corner-flag ${flagPositionSelect.value} theme-${flagThemeSelect.value}`;
+    }
+
+    flagThemeSelect.addEventListener('change', () => {
+      if (window.electronAPI) window.electronAPI.setFlagTheme(flagThemeSelect.value);
+      updateCornerFlag();
+    });
+
+    flagEnabledToggle.addEventListener('change', () => {
+      if (window.electronAPI) window.electronAPI.setFlagEnabled(flagEnabledToggle.checked);
+      updateCornerFlag();
+    });
+
+    flagPositionSelect.addEventListener('change', () => {
+      if (window.electronAPI) window.electronAPI.setFlagPosition(flagPositionSelect.value);
+      updateCornerFlag();
+    });
+
     let customAudio = null;
 
     hydrationToggle.addEventListener('change', () => {
@@ -1554,6 +1857,14 @@
 
     osdHydrationToggle.addEventListener('change', () => {
       if (window.electronAPI) window.electronAPI.setOSDHydrationNotify(osdHydrationToggle.checked);
+    });
+
+    hydrationThemeSelect.addEventListener('change', () => {
+      if (window.electronAPI) window.electronAPI.setHydrationTheme(hydrationThemeSelect.value);
+    });
+
+    hydrationMessageInput.addEventListener('input', () => {
+      if (window.electronAPI) window.electronAPI.setHydrationMessage(hydrationMessageInput.value);
     });
 
     const selectSoundBtn = document.getElementById('selectSoundBtn');
@@ -1607,6 +1918,132 @@
       }
     });
 
+    /* --- NEXT SOUND LOGIC --- */
+    const nextSoundToggle = document.getElementById('nextSoundToggle');
+    const selectNextSoundBtn = document.getElementById('selectNextSoundBtn');
+    const resetNextSoundBtn = document.getElementById('resetNextSoundBtn');
+    const testNextSoundBtn = document.getElementById('testNextSoundBtn');
+    const nextSoundNameEl = document.getElementById('nextSoundName');
+    const nextSoundVolumeInput = document.getElementById('nextSoundVolume');
+    let nextAudio = null;
+
+    nextSoundToggle.addEventListener('change', () => {
+      if (window.electronAPI) window.electronAPI.setNextSoundEnabled(nextSoundToggle.checked);
+    });
+    selectNextSoundBtn.addEventListener('click', async () => {
+      if (window.electronAPI) {
+        const path = await window.electronAPI.selectHydrationSound(); // Reuse file selector
+        if (path) {
+          window.electronAPI.setNextSound(path);
+          updateNextSoundUI(path);
+          loadNextSoundData();
+        }
+      }
+    });
+    resetNextSoundBtn.addEventListener('click', () => {
+      if (window.electronAPI) {
+        window.electronAPI.setNextSound(null);
+        updateNextSoundUI(null);
+        loadNextSoundData();
+      }
+    });
+    nextSoundVolumeInput.addEventListener('input', () => {
+      const vol = parseFloat(nextSoundVolumeInput.value);
+      if (nextAudio) nextAudio.volume = vol;
+      if (window.electronAPI) window.electronAPI.setNextSoundVolume(vol);
+    });
+    testNextSoundBtn.addEventListener('click', () => playNextSound(true));
+
+    function updateNextSoundUI(path) {
+      if (path) {
+        nextSoundNameEl.textContent = path.split(/[\\/]/).pop();
+        resetNextSoundBtn.style.display = 'inline-block';
+        selectNextSoundBtn.textContent = "Change";
+      } else {
+        nextSoundNameEl.textContent = "Default";
+        resetNextSoundBtn.style.display = 'none';
+        selectNextSoundBtn.textContent = "Select File";
+      }
+    }
+    async function loadNextSoundData() {
+      if (!window.electronAPI) return;
+      const result = await window.electronAPI.readNextSound();
+      if (result) {
+        nextAudio = new Audio(`data:${result.mime};base64,${result.data}`);
+        const vol = parseFloat(nextSoundVolumeInput.value);
+        nextAudio.volume = isNaN(vol) ? 0.5 : vol;
+      } else nextAudio = null;
+    }
+    function playNextSound(force = false) {
+      if ((nextSoundToggle.checked || force) && nextAudio) {
+        nextAudio.currentTime = 0;
+        nextAudio.play().catch(e => console.error(e));
+      }
+    }
+
+    /* --- FISSURE SOUND LOGIC --- */
+    const fissureSoundToggle = document.getElementById('fissureSoundToggle');
+    const selectFissureSoundBtn = document.getElementById('selectFissureSoundBtn');
+    const resetFissureSoundBtn = document.getElementById('resetFissureSoundBtn');
+    const testFissureSoundBtn = document.getElementById('testFissureSoundBtn');
+    const fissureSoundNameEl = document.getElementById('fissureSoundName');
+    const fissureSoundVolumeInput = document.getElementById('fissureSoundVolume');
+    let fissureAudio = null;
+
+    fissureSoundToggle.addEventListener('change', () => {
+      if (window.electronAPI) window.electronAPI.setFissureSoundEnabled(fissureSoundToggle.checked);
+    });
+    selectFissureSoundBtn.addEventListener('click', async () => {
+      if (window.electronAPI) {
+        const path = await window.electronAPI.selectHydrationSound();
+        if (path) {
+          window.electronAPI.setFissureSound(path);
+          updateFissureSoundUI(path);
+          loadFissureSoundData();
+        }
+      }
+    });
+    resetFissureSoundBtn.addEventListener('click', () => {
+      if (window.electronAPI) {
+        window.electronAPI.setFissureSound(null);
+        updateFissureSoundUI(null);
+        loadFissureSoundData();
+      }
+    });
+    fissureSoundVolumeInput.addEventListener('input', () => {
+      const vol = parseFloat(fissureSoundVolumeInput.value);
+      if (fissureAudio) fissureAudio.volume = vol;
+      if (window.electronAPI) window.electronAPI.setFissureSoundVolume(vol);
+    });
+    testFissureSoundBtn.addEventListener('click', () => playFissureSound(true));
+
+    function updateFissureSoundUI(path) {
+      if (path) {
+        fissureSoundNameEl.textContent = path.split(/[\\/]/).pop();
+        resetFissureSoundBtn.style.display = 'inline-block';
+        selectFissureSoundBtn.textContent = "Change";
+      } else {
+        fissureSoundNameEl.textContent = "Default";
+        resetFissureSoundBtn.style.display = 'none';
+        selectFissureSoundBtn.textContent = "Select File";
+      }
+    }
+    async function loadFissureSoundData() {
+      if (!window.electronAPI) return;
+      const result = await window.electronAPI.readFissureSound();
+      if (result) {
+        fissureAudio = new Audio(`data:${result.mime};base64,${result.data}`);
+        const vol = parseFloat(fissureSoundVolumeInput.value);
+        fissureAudio.volume = isNaN(vol) ? 0.5 : vol;
+      } else fissureAudio = null;
+    }
+    function playFissureSound(force = false) {
+      if ((fissureSoundToggle.checked || force) && fissureAudio) {
+        fissureAudio.currentTime = 0;
+        fissureAudio.play().catch(e => console.error(e));
+      }
+    }
+
     async function loadCustomSoundData() {
       if (!window.electronAPI) return;
       const result = await window.electronAPI.readHydrationSound();
@@ -1658,6 +2095,7 @@
       if (!isTest && !hydrationToggle.checked) return;
 
       const popup = document.getElementById('hydrationPopup');
+      popup.textContent = hydrationMessageInput.value || "HYDRATE OR DIE STRAIGHT!";
       popup.classList.add('show');
       playPleasantNoise();
       
@@ -1764,6 +2202,7 @@
     let retryTimeout = null;
     let isFetchingFissures = false;
     let lastFetchTime = 0;
+    let seenFissureIds = new Set();
 
     // State for filters
     let hiddenMissionTypes = [];
@@ -1824,17 +2263,37 @@
           osdOpacityInput.value = settings.osdOpacity || 1.0;
           osdScaleInput.value = settings.osdScale || 1.0;
           osdLockToggle.checked = settings.osdLocked || false;
+          osdHideBorderToggle.checked = settings.osdHideBorder || false;
           osdClockToggle.checked = settings.osdShowClock || false;
           hideOSDWhenEmptyToggle.checked = (settings.ui && settings.ui.hideOSDWhenEmpty) || false;
           scanPauseInput.value = settings.autoScanPause || 30;
           
           hydrationToggle.checked = settings.hydrationReminderEnabled || false;
           osdHydrationToggle.checked = settings.osdHydrationNotify || false;
+          hydrationThemeSelect.value = settings.hydrationTheme || 'rainbow';
+          hydrationMessageInput.value = settings.hydrationMessage || "HYDRATE OR DIE STRAIGHT!";
+          
+          flagEnabledToggle.checked = settings.flagEnabled || false;
+          flagThemeSelect.value = settings.flagTheme || 'rainbow';
+          flagPositionSelect.value = settings.flagPosition || 'left';
+          updateCornerFlag();
 
           hydrationIntervalInput.value = settings.hydrationIntervalMinutes || 60;
           hydrationVolumeInput.value = settings.hydrationSoundVolume !== undefined ? settings.hydrationSoundVolume : 0.5;
           updateSoundUI(settings.hydrationSound);
           loadCustomSoundData();
+
+          // Load Next Sound
+          nextSoundToggle.checked = settings.nextSoundEnabled || false;
+          nextSoundVolumeInput.value = settings.nextSoundVolume !== undefined ? settings.nextSoundVolume : 0.5;
+          updateNextSoundUI(settings.nextSound);
+          loadNextSoundData();
+
+          // Load Fissure Sound
+          fissureSoundToggle.checked = settings.fissureSoundEnabled || false;
+          fissureSoundVolumeInput.value = settings.fissureSoundVolume !== undefined ? settings.fissureSoundVolume : 0.5;
+          updateFissureSoundUI(settings.fissureSound);
+          loadFissureSoundData();
 
           // Load Layout
           if (settings.layout) {
@@ -2217,6 +2676,7 @@
         });
 
         // Filter logic
+        const currentVisibleIds = new Set();
         const displayFissures = activeFissures.filter(f => {
           if (!f.tier) return false; // Basic validity check
           if (f.isStorm) return false; // Railjack filter (Always hidden)
@@ -2240,9 +2700,19 @@
           // 3. Omnia Specifics (e.g. "Omnia_Survival")
           if (f.tier === 'Omnia' && hiddenVariants.includes(`Omnia_${f.missionType}`)) return false;
 
+          // Track visible ID for sound logic
+          currentVisibleIds.add(`${f.node}-${f.expiry}`);
           return true;
         });
         
+        // Check for new fissures
+        let hasNew = false;
+        for (const id of currentVisibleIds) {
+          if (!seenFissureIds.has(id)) hasNew = true;
+        }
+        if (hasNew && seenFissureIds.size > 0) playFissureSound();
+        seenFissureIds = currentVisibleIds;
+
         // Sort by Tier number (1=Lith, etc)
         displayFissures.sort((a, b) => a.tierNum - b.tierNum);
 
@@ -2525,6 +2995,25 @@
       const layout = saveLayout(); // Saves to current active layout
       if (window.electronAPI) {
         // Also save to custom slot
+        window.electronAPI.setUISettings({ customLayout: layout });
+        alert("Layout saved as Custom Preset!");
+      }
+    });
+
+    loadCustomLayoutBtn.addEventListener('click', () => {
+      if (uiSettings && uiSettings.customLayout) {
+        applyLayout(uiSettings.customLayout);
+        saveLayout();
+      } else {
+        alert("No custom preset saved.");
+      }
+    });
+    // Load on startup (moved to end to ensure all variables are defined)
+    loadSettings();
+
+  </script>
+</body>
+</html>
         window.electronAPI.setUISettings({ customLayout: layout });
         alert("Layout saved as Custom Preset!");
       }

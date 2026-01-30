@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, screen, dialog, shell, Tray, Menu } = require("electron");
+const { app, BrowserWindow, ipcMain, screen, dialog, shell, Tray, Menu, globalShortcut } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
@@ -76,6 +76,23 @@ if (typeof settings.osdOpacity === 'undefined') settings.osdOpacity = 1.0;
 if (typeof settings.osdLocked === 'undefined') settings.osdLocked = false;
 if (typeof settings.osdScale === 'undefined') settings.osdScale = 1.0;
 if (typeof settings.hotkeyEnabled === 'undefined') settings.hotkeyEnabled = true;
+
+// Initialize Keybinds
+if (!settings.keybinds) settings.keybinds = {};
+if (!settings.globalKeybinds) settings.globalKeybinds = {};
+// Migrate legacy hotkey
+if (settings.hotkey && settings.keybinds.next === undefined) {
+  settings.keybinds.next = settings.hotkey;
+  // Legacy hotkey was global, so preserve that behavior
+  settings.globalKeybinds.next = true;
+  delete settings.hotkey;
+  saveSettings();
+}
+// Ensure defaults
+if (typeof settings.keybinds.next === 'undefined') settings.keybinds.next = "Right";
+const optionalKeybinds = ['start', 'reset', 'cascade', 'mode4b4', 'mode2b2', 'mode1b1'];
+optionalKeybinds.forEach(k => { if (typeof settings.keybinds[k] === 'undefined') settings.keybinds[k] = ""; });
+
 if (typeof settings.voidCascadeMode === 'undefined') settings.voidCascadeMode = false;
 if (typeof settings.relicName === 'undefined') settings.relicName = "";
 if (typeof settings.rotationMode === 'undefined') settings.rotationMode = "4b4";
@@ -84,6 +101,12 @@ if (typeof settings.hydrationReminderEnabled === 'undefined') settings.hydration
 if (typeof settings.hydrationSound === 'undefined') settings.hydrationSound = null;
 if (typeof settings.hydrationIntervalMinutes === 'undefined') settings.hydrationIntervalMinutes = 60;
 if (typeof settings.hydrationSoundVolume === 'undefined') settings.hydrationSoundVolume = 0.5;
+if (typeof settings.nextSoundEnabled === 'undefined') settings.nextSoundEnabled = false;
+if (typeof settings.nextSound === 'undefined') settings.nextSound = null;
+if (typeof settings.nextSoundVolume === 'undefined') settings.nextSoundVolume = 0.5;
+if (typeof settings.fissureSoundEnabled === 'undefined') settings.fissureSoundEnabled = false;
+if (typeof settings.fissureSound === 'undefined') settings.fissureSound = null;
+if (typeof settings.fissureSoundVolume === 'undefined') settings.fissureSoundVolume = 0.5;
 if (!settings.windowBounds) settings.windowBounds = { width: 750, height: 1050 };
 if (!settings.ui) settings.ui = {};
 if (typeof settings.ui.hotkeySettingsCollapsed === 'undefined') settings.ui.hotkeySettingsCollapsed = false;
@@ -97,6 +120,12 @@ if (typeof settings.closeToTray === 'undefined') settings.closeToTray = false;
 if (typeof settings.alwaysOnTop === 'undefined') settings.alwaysOnTop = false;
 if (typeof settings.osdShowClock === 'undefined') settings.osdShowClock = false;
 if (typeof settings.osdHydrationNotify === 'undefined') settings.osdHydrationNotify = false;
+if (typeof settings.osdHideBorder === 'undefined') settings.osdHideBorder = false;
+if (typeof settings.hydrationTheme === 'undefined') settings.hydrationTheme = 'rainbow';
+if (typeof settings.hydrationMessage === 'undefined') settings.hydrationMessage = "HYDRATE OR DIE STRAIGHT!";
+if (typeof settings.flagTheme === 'undefined') settings.flagTheme = 'rainbow';
+if (typeof settings.flagEnabled === 'undefined') settings.flagEnabled = false;
+if (typeof settings.flagPosition === 'undefined') settings.flagPosition = 'left';
 
 function updateHydrationTimer() {
   if (hydrationTimer) clearInterval(hydrationTimer);
@@ -113,17 +142,18 @@ function updateHydrationTimer() {
   }
 }
 
-function registerHotkey() {
+function registerGlobalHotkeys() {
   globalShortcut.unregisterAll();
-  if (!settings.hotkey || !settings.hotkeyEnabled) return;
-  const registered = globalShortcut.register(settings.hotkey, () => {
-    win.webContents.send("hotkey-next");
-  });
+  if (!settings.hotkeyEnabled) return;
 
-  if (registered) {
-    console.log(`Hotkey "${settings.hotkey}" registered successfully.`);
-  } else {
-    console.error(`Failed to register hotkey "${settings.hotkey}". It might be in use by another application.`);
+  for (const [action, key] of Object.entries(settings.keybinds)) {
+    if (key && settings.globalKeybinds && settings.globalKeybinds[action]) {
+      try {
+        globalShortcut.register(key, () => {
+          if (win) win.webContents.send('trigger-action', action);
+        });
+      } catch (e) { console.error(`Failed to register global hotkey ${key}:`, e); }
+    }
   }
 }
 
@@ -144,7 +174,7 @@ function createWindow() {
 
   win.loadFile("index.html");
   win.webContents.on("did-finish-load", () => {
-    win.webContents.send("load-hotkey", settings.hotkey);
+    win.webContents.send("load-keybinds", { keybinds: settings.keybinds, globalKeybinds: settings.globalKeybinds });
     broadcastScannerStatus();
     // Check for updates after window is loaded to ensure UI listeners are ready
     autoUpdater.checkForUpdates();
@@ -183,7 +213,7 @@ function saveWindowBounds() {
 
 app.whenReady().then(() => {
   createWindow();
-  registerHotkey();
+  registerGlobalHotkeys();
   updateHydrationTimer();
   if (settings.osdEnabled) {
     createOSDWindow();
@@ -222,16 +252,21 @@ app.on('before-quit', () => {
   isQuitting = true;
 });
 
-ipcMain.on("set-hotkey", (event, newHotkey) => {
-  settings.hotkey = newHotkey;
+ipcMain.on("set-keybind", (event, { action, key, isGlobal }) => {
+  if (!settings.keybinds) settings.keybinds = {};
+  if (!settings.globalKeybinds) settings.globalKeybinds = {};
+  
+  if (key !== undefined) settings.keybinds[action] = key;
+  if (isGlobal !== undefined) settings.globalKeybinds[action] = isGlobal;
+  
   saveSettings();
-  registerHotkey();
+  registerGlobalHotkeys();
 });
 
 ipcMain.on("set-hotkey-enabled", (event, enabled) => {
   settings.hotkeyEnabled = enabled;
   saveSettings();
-  registerHotkey();
+  registerGlobalHotkeys();
 });
 
 ipcMain.on("set-relic-name", (event, name) => {
@@ -307,6 +342,67 @@ ipcMain.handle('read-hydration-sound', async () => {
     }
   } catch (e) { console.error(e); }
   return null;
+});
+
+ipcMain.on('set-next-sound-enabled', (event, enabled) => {
+  settings.nextSoundEnabled = enabled;
+  saveSettings();
+});
+
+ipcMain.on('set-next-sound', (event, path) => {
+  settings.nextSound = path;
+  saveSettings();
+});
+
+ipcMain.on('set-next-sound-volume', (event, volume) => {
+  settings.nextSoundVolume = volume;
+  saveSettings();
+});
+
+ipcMain.handle('read-next-sound', async () => {
+  if (settings.nextSound && fs.existsSync(settings.nextSound)) {
+    try {
+      const buffer = fs.readFileSync(settings.nextSound);
+      const ext = path.extname(settings.nextSound).toLowerCase().replace('.', '');
+      const mime = ext === 'wav' ? 'audio/wav' : ext === 'ogg' ? 'audio/ogg' : 'audio/mpeg';
+      return { data: buffer.toString('base64'), mime: mime };
+    } catch (e) { console.error(e); }
+  }
+  // Default: "Pling" - High pitch, short, soft decay
+  const buffer = createWavBuffer([{ freq: 1046.5, duration: 150 }]);
+  return { data: buffer.toString('base64'), mime: 'audio/wav' };
+});
+
+ipcMain.on('set-fissure-sound-enabled', (event, enabled) => {
+  settings.fissureSoundEnabled = enabled;
+  saveSettings();
+});
+
+ipcMain.on('set-fissure-sound', (event, path) => {
+  settings.fissureSound = path;
+  saveSettings();
+});
+
+ipcMain.on('set-fissure-sound-volume', (event, volume) => {
+  settings.fissureSoundVolume = volume;
+  saveSettings();
+});
+
+ipcMain.handle('read-fissure-sound', async () => {
+  if (settings.fissureSound && fs.existsSync(settings.fissureSound)) {
+    try {
+      const buffer = fs.readFileSync(settings.fissureSound);
+      const ext = path.extname(settings.fissureSound).toLowerCase().replace('.', '');
+      const mime = ext === 'wav' ? 'audio/wav' : ext === 'ogg' ? 'audio/ogg' : 'audio/mpeg';
+      return { data: buffer.toString('base64'), mime: mime };
+    } catch (e) { console.error(e); }
+  }
+  // Default: "Badding" - Two tones rising (C5 -> G5)
+  const buffer = createWavBuffer([
+    { freq: 523.25, duration: 80 },
+    { freq: 783.99, duration: 200 }
+  ]);
+  return { data: buffer.toString('base64'), mime: 'audio/wav' };
 });
 
 ipcMain.handle("get-settings", () => settings);
@@ -412,8 +508,28 @@ ipcMain.on('set-osd-enabled', (event, enabled) => {
 ipcMain.on('set-osd-opacity', (event, opacity) => {
   settings.osdOpacity = opacity;
   saveSettings();
-  if (osdWin) {
-    osdWin.webContents.send('update-osd-style', { opacity: settings.osdOpacity });
+  if (osdWin && !osdWin.isDestroyed()) {
+    osdWin.webContents.send('update-osd-style', { 
+      opacity: settings.osdOpacity,
+      locked: settings.osdLocked,
+      hideBorder: settings.osdHideBorder,
+      hydrationTheme: settings.hydrationTheme,
+      hydrationMessage: settings.hydrationMessage
+    });
+  }
+});
+
+ipcMain.on('set-osd-hide-border', (event, hide) => {
+  settings.osdHideBorder = hide;
+  saveSettings();
+  if (osdWin && !osdWin.isDestroyed()) {
+    osdWin.webContents.send('update-osd-style', { 
+      opacity: settings.osdOpacity,
+      locked: settings.osdLocked,
+      hideBorder: settings.osdHideBorder,
+      hydrationTheme: settings.hydrationTheme,
+      hydrationMessage: settings.hydrationMessage
+    });
   }
 });
 
@@ -433,6 +549,13 @@ ipcMain.on('set-osd-locked', (event, locked) => {
   saveSettings();
   if (osdWin && !osdWin.isDestroyed()) {
     osdWin.setIgnoreMouseEvents(locked);
+    osdWin.webContents.send('update-osd-style', { 
+      opacity: settings.osdOpacity,
+      locked: settings.osdLocked,
+      hideBorder: settings.osdHideBorder,
+      hydrationTheme: settings.hydrationTheme,
+      hydrationMessage: settings.hydrationMessage
+    });
   }
 });
 
@@ -467,6 +590,41 @@ ipcMain.on('update-osd', (event, data) => {
   }
 });
 
+ipcMain.on('set-hydration-theme', (event, theme) => {
+  settings.hydrationTheme = theme;
+  saveSettings();
+  if (osdWin && !osdWin.isDestroyed()) {
+    osdWin.webContents.send('update-osd-style', { 
+      hydrationTheme: settings.hydrationTheme
+    });
+  }
+});
+
+ipcMain.on('set-hydration-message', (event, message) => {
+  settings.hydrationMessage = message;
+  saveSettings();
+  if (osdWin && !osdWin.isDestroyed()) {
+    osdWin.webContents.send('update-osd-style', { 
+      hydrationMessage: settings.hydrationMessage
+    });
+  }
+});
+
+ipcMain.on('set-flag-enabled', (event, enabled) => {
+  settings.flagEnabled = enabled;
+  saveSettings();
+});
+
+ipcMain.on('set-flag-theme', (event, theme) => {
+  settings.flagTheme = theme;
+  saveSettings();
+});
+
+ipcMain.on('set-flag-position', (event, position) => {
+  settings.flagPosition = position;
+  saveSettings();
+});
+
 ipcMain.on('open-external', (event, url) => {
   shell.openExternal(url);
 });
@@ -499,7 +657,7 @@ function createOSDWindow() {
     show: !(settings.ui && settings.ui.hideOSDWhenEmpty),
     type: 'utility', // Helps Linux WMs treat this as a floating tool
     webPreferences: {
-      preload: path.join(__dirname, 'osd_preload.js')
+      preload: path.join(__dirname, 'preload.js')
     }
   });
   
@@ -507,7 +665,13 @@ function createOSDWindow() {
 
   osdWin.webContents.on('did-finish-load', () => {
     osdWin.webContents.setZoomFactor(settings.osdScale);
-    osdWin.webContents.send('update-osd-style', { opacity: settings.osdOpacity });
+    osdWin.webContents.send('update-osd-style', { 
+      opacity: settings.osdOpacity,
+      locked: settings.osdLocked,
+      hideBorder: settings.osdHideBorder,
+      hydrationTheme: settings.hydrationTheme,
+      hydrationMessage: settings.hydrationMessage
+    });
   });
 
   if (settings.osdLocked) {
@@ -524,6 +688,12 @@ function createOSDWindow() {
     osdWin = null;
   });
 }
+
+ipcMain.on('osd-drag', (event, { x, y }) => {
+  if (osdWin && !osdWin.isDestroyed()) {
+    osdWin.setPosition(Math.round(x), Math.round(y));
+  }
+});
 
 function createTray() {
   if (tray) return;
@@ -955,3 +1125,66 @@ ipcMain.handle("get-fissures", async () => {
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
 });
+
+// Helper to generate simple beep sounds (WAV format)
+function createWavBuffer(notes) {
+  if (!Array.isArray(notes)) notes = [notes];
+  const sampleRate = 44100;
+  let totalSamples = 0;
+  for (const note of notes) {
+    totalSamples += Math.floor((sampleRate * note.duration) / 1000);
+  }
+
+  const bytesPerSample = 2;
+  const numChannels = 1;
+  const blockAlign = numChannels * bytesPerSample;
+  const dataSize = totalSamples * blockAlign;
+  const byteRate = sampleRate * blockAlign;
+  const buffer = Buffer.alloc(44 + dataSize);
+
+  // RIFF chunk
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write('WAVE', 8);
+
+  // fmt sub-chunk
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20); // PCM
+  buffer.writeUInt16LE(numChannels, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(byteRate, 28);
+  buffer.writeUInt16LE(blockAlign, 32);
+  buffer.writeUInt16LE(16, 34); // BitsPerSample
+
+  // data sub-chunk
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(dataSize, 40);
+
+  let offset = 44;
+
+  for (const note of notes) {
+    const numSamples = Math.floor((sampleRate * note.duration) / 1000);
+    const attackSamples = Math.min(numSamples * 0.1, 441); // 10ms attack max
+
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      const angle = t * note.freq * 2 * Math.PI;
+      
+      // Soft Envelope (Attack -> Quadratic Decay)
+      let vol = 1.0;
+      if (i < attackSamples) {
+        vol = i / attackSamples;
+      } else {
+        const progress = (i - attackSamples) / (numSamples - attackSamples);
+        vol = Math.pow(1 - progress, 2);
+      }
+      
+      const sample = Math.sin(angle);
+      const val = Math.max(-32768, Math.min(32767, sample * vol * 32767));
+      buffer.writeInt16LE(val, offset);
+      offset += 2;
+    }
+  }
+  return buffer;
+}

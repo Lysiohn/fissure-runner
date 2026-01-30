@@ -1,9 +1,9 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  onHotkeyNext: (callback) => ipcRenderer.on("hotkey-next", callback),
-  setHotkey: (key) => ipcRenderer.send("set-hotkey", key),
-  onLoadHotkey: (callback) => ipcRenderer.on("load-hotkey", callback),
+  setKeybind: (action, key, isGlobal) => ipcRenderer.send("set-keybind", { action, key, isGlobal }),
+  onLoadKeybinds: (callback) => ipcRenderer.on("load-keybinds", callback),
+  onTriggerAction: (callback) => ipcRenderer.on("trigger-action", callback),
   getFissures: () => ipcRenderer.invoke("get-fissures"),
   getSettings: () => ipcRenderer.invoke("get-settings"),
   setFilters: (filters) => ipcRenderer.send("set-filters", filters),
@@ -28,6 +28,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   readHydrationSound: () => ipcRenderer.invoke('read-hydration-sound'),
   onHydrationStateChanged: (callback) => ipcRenderer.on('hydration-state-changed', callback),
   onTriggerHydration: (callback) => ipcRenderer.on('trigger-hydration', callback),
+  setNextSoundEnabled: (enabled) => ipcRenderer.send('set-next-sound-enabled', enabled),
+  setNextSound: (path) => ipcRenderer.send('set-next-sound', path),
+  setNextSoundVolume: (volume) => ipcRenderer.send('set-next-sound-volume', volume),
+  readNextSound: () => ipcRenderer.invoke('read-next-sound'),
+  setFissureSoundEnabled: (enabled) => ipcRenderer.send('set-fissure-sound-enabled', enabled),
+  setFissureSound: (path) => ipcRenderer.send('set-fissure-sound', path),
+  setFissureSoundVolume: (volume) => ipcRenderer.send('set-fissure-sound-volume', volume),
+  readFissureSound: () => ipcRenderer.invoke('read-fissure-sound'),
   openExternal: (url) => ipcRenderer.send('open-external', url),
   setLayout: (layout) => ipcRenderer.send('set-layout', layout),
   checkForUpdate: () => ipcRenderer.send('check-for-update'),
@@ -45,5 +53,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setCloseToTray: (enabled) => ipcRenderer.send('set-close-to-tray', enabled),
   setAlwaysOnTop: (enabled) => ipcRenderer.send('set-always-on-top', enabled),
   setOSDShowClock: (enabled) => ipcRenderer.send('set-osd-show-clock', enabled),
-  setOSDHydrationNotify: (enabled) => ipcRenderer.send('set-osd-hydration-notify', enabled)
+  setOSDHydrationNotify: (enabled) => ipcRenderer.send('set-osd-hydration-notify', enabled),
+  setOSDHideBorder: (enabled) => ipcRenderer.send('set-osd-hide-border', enabled),
+  setHydrationTheme: (theme) => ipcRenderer.send('set-hydration-theme', theme),
+  setHydrationMessage: (message) => ipcRenderer.send('set-hydration-message', message),
+  setFlagTheme: (theme) => ipcRenderer.send('set-flag-theme', theme),
+  setFlagEnabled: (enabled) => ipcRenderer.send('set-flag-enabled', enabled),
+  setFlagPosition: (position) => ipcRenderer.send('set-flag-position', position)
+});
+
+contextBridge.exposeInMainWorld("osdAPI", {
+  onUpdateData: (callback) => ipcRenderer.on('update-osd-data', callback),
+  onUpdateStyle: (callback) => ipcRenderer.on('update-osd-style', callback),
+  drag: (pos) => ipcRenderer.send('osd-drag', pos)
 });

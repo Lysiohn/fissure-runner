@@ -18,14 +18,17 @@
       flex-direction: column;
       justify-content: center;
       height: 100%;
-      padding: 8px 12px 14px 12px;
+      padding: 8px 12px;
       background: rgba(9, 9, 11, 0.95);
       border-radius: 6px;
       border: 1px solid #3f3f46;
       box-sizing: border-box;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
       backdrop-filter: blur(8px);
-      -webkit-app-region: drag; /* Allow dragging */
+      cursor: move;
+      transition: border-color 0.2s;
+      position: relative;
+      overflow: hidden;
     }
     #osd-grid {
       display: grid;
@@ -51,18 +54,61 @@
       flex-shrink: 0;
     }
 
-    .hydration-popup {
-      position: absolute;
-      bottom: 0;
-      left: 0;
+    #hydration-popup {
+      position: relative;
       width: 100%;
-      background: #10b981;
-      color: #fff;
-      font-weight: 600;
+      -webkit-background-clip: text;
+      background-clip: text;
+      font-weight: 800;
       font-size: 12px;
+      letter-spacing: 0.5px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
       text-align: center;
-      padding: 4px 0;
+      padding: 6px 0 2px 0;
       display: none;
+    }
+
+    /* Theme Classes */
+    .theme-rainbow { background-image: linear-gradient(90deg, #e40303, #ff8c00, #ffed00, #008026, #004dff, #750787, #e40303); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-trans { background-image: linear-gradient(90deg, #5bcefa, #f5a9b8, #ffffff, #f5a9b8, #5bcefa, #5bcefa); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-lesbian { background-image: linear-gradient(90deg, #d52d00, #ef7627, #ff9a56, #ffffff, #d162a4, #b55690, #a30262, #d52d00); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-bi { background-image: linear-gradient(90deg, #d00070, #8c4799, #0032a0, #d00070); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-pan { background-image: linear-gradient(90deg, #ff218c, #ffd800, #21b1ff, #ff218c); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-ace { background-image: linear-gradient(90deg, #000000, #a3a3a3, #ffffff, #800080, #000000); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-enby { background-image: linear-gradient(90deg, #fcf434, #ffffff, #9c59d1, #2c2c2c, #fcf434); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-genderqueer { background-image: linear-gradient(90deg, #b57edc, #ffffff, #4a8123, #b57edc); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-agender { background-image: linear-gradient(90deg, #000000, #b9b9b9, #ffffff, #b8f483, #ffffff, #b9b9b9, #000000); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-aro { background-image: linear-gradient(90deg, #3da542, #a7d379, #ffffff, #a9a9a9, #000000, #3da542); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-fluid { background-image: linear-gradient(90deg, #ff75a2, #ffffff, #be18d6, #000000, #333ebd, #ff75a2); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-poly { background-image: linear-gradient(90deg, #f61cb9, #07d569, #1c92f6, #f61cb9); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-omni { background-image: linear-gradient(90deg, #fe9ace, #ff53bf, #200044, #6760fe, #8ea6ff, #fe9ace); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-mlm { background-image: linear-gradient(90deg, #078d70, #26ceaa, #98e8c1, #ffffff, #7bade2, #5049cc, #3d1a78, #078d70); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-demiboy { background-image: linear-gradient(90deg, #7f7f7f, #c4c4c4, #9ad9eb, #ffffff, #9ad9eb, #c4c4c4, #7f7f7f); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    .theme-demigirl { background-image: linear-gradient(90deg, #7f7f7f, #c4c4c4, #ff6d96, #ffffff, #ff6d96, #c4c4c4, #7f7f7f); color: transparent; background-size: 200% 100%; animation: flow 2s linear infinite; }
+    
+    .theme-white {
+      background: none;
+      -webkit-background-clip: border-box;
+      background-clip: border-box;
+      color: #ffffff;
+      animation: none;
+    }
+
+    @keyframes flow {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
+
+    /* Hide Border Logic */
+    body.hide-border #osd-wrapper {
+      border-color: transparent;
+    }
+    body.hide-border:not(.locked) #osd-wrapper:hover {
+      border-color: #3f3f46 !important;
+    }
+
+    body.locked #osd-wrapper {
+      cursor: default;
     }
   </style>
 </head>
@@ -83,7 +129,7 @@
       <div class="label">Next</div>
       <div id="next" class="value"><span class="value-text">—</span></div>
     </div> 
-    <div id="hydration-popup">💧 Hydrate!</div>
+    <div id="hydration-popup"></div>
     
     <!-- Hidden Clock Element -->
     <div id="clock-container" class="clock-container" style="display:none;">
@@ -155,11 +201,9 @@
         // Move clock to appropriate row
         if (showRelic) {
             relicVal.appendChild(clockContainer);
-        } else if (showCycle) {
-            cycleInfo.appendChild(clockContainer);
         } else {
-            // Fallback to Now row if both Relic and Cycle are hidden
-            nowEl.appendChild(clockContainer);
+            // Fallback to Next row to avoid obstructing the mission timer in the Cycle row
+            nextEl.appendChild(clockContainer);
         }
       } else {
         clockContainer.style.display = 'none';
@@ -172,9 +216,50 @@
 
     window.osdAPI.onUpdateStyle((event, style) => {
       if (style.opacity !== undefined) {
-        document.getElementById('osd-wrapper').style.background = `rgba(9, 9, 11, ${style.opacity})`;
+        const wrapper = document.getElementById('osd-wrapper');
+        wrapper.style.background = `rgba(9, 9, 11, ${style.opacity})`;
+        if (parseFloat(style.opacity) === 0) {
+          wrapper.style.boxShadow = 'none';
+          wrapper.style.backdropFilter = 'none';
+        } else {
+          wrapper.style.boxShadow = '';
+          wrapper.style.backdropFilter = '';
+        }
+      }
+      if (style.locked !== undefined) {
+        style.locked ? document.body.classList.add('locked') : document.body.classList.remove('locked');
+      }
+      if (style.hideBorder !== undefined) {
+        style.hideBorder ? document.body.classList.add('hide-border') : document.body.classList.remove('hide-border');
+      }
+      if (style.hydrationTheme !== undefined) {
+        const popup = document.getElementById('hydration-popup');
+        popup.className = `theme-${style.hydrationTheme}`;
+      }
+      if (style.hydrationMessage !== undefined) {
+        document.getElementById('hydration-popup').textContent = style.hydrationMessage;
       }
     });
+
+    // Custom Drag Logic (Replaces -webkit-app-region: drag to allow hover events)
+    let isDragging = false;
+    let dragOffset = { x: 0, y: 0 };
+
+    document.addEventListener('mousedown', (e) => {
+      if (e.button === 0 && !document.body.classList.contains('locked')) {
+        isDragging = true;
+        dragOffset.x = e.screenX - window.screenX;
+        dragOffset.y = e.screenY - window.screenY;
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        window.osdAPI.drag({ x: e.screenX - dragOffset.x, y: e.screenY - dragOffset.y });
+      }
+    });
+
+    document.addEventListener('mouseup', () => { isDragging = false; });
   </script>
 </body>
 </html>

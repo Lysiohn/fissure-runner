@@ -52,6 +52,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onDetectedRelic: (callback) => ipcRenderer.on('detected-relic', callback),
   setCloseToTray: (enabled) => ipcRenderer.send('set-close-to-tray', enabled),
   setAlwaysOnTop: (enabled) => ipcRenderer.send('set-always-on-top', enabled),
+  setRunAtStartup: (enabled) => ipcRenderer.send('set-run-at-startup', enabled),
+  setStartMinimized: (enabled) => ipcRenderer.send('set-start-minimized', enabled),
   setOSDShowClock: (enabled) => ipcRenderer.send('set-osd-show-clock', enabled),
   setOSDHydrationNotify: (enabled) => ipcRenderer.send('set-osd-hydration-notify', enabled),
   setOSDHideBorder: (enabled) => ipcRenderer.send('set-osd-hide-border', enabled),

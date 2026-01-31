@@ -1,13 +1,14 @@
 {
   "name": "fissure-runner",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "description": "Warframe Fissure Runner",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win --publish always",
-    "build:linux": "electron-builder --linux --publish always"
+    "build:linux": "electron-builder --linux --publish always",
+    "build:linux-local": "electron-builder --linux"
   },
   "build": {
     "appId": "com.lysi.fissurerunner",

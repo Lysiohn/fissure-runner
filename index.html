@@ -142,6 +142,7 @@
       display: flex;
       gap: 0.5rem;
       margin-top: 0.75rem;
+      flex-wrap: wrap;
     }
 
     button {
@@ -1007,17 +1008,24 @@
               <label for="closeToTrayToggle" style="cursor: pointer;">Close to Tray <br><span style="font-size:0.7rem; color:#71717a;">(Keep app running in background)</span></label>
               <input type="checkbox" id="closeToTrayToggle" style="cursor: pointer;" />
             </div>
+            <div class="scanner-row" style="margin-top: 0.5rem;">
+              <label for="runAtStartupToggle" style="cursor: pointer;">Run at Startup</label>
+              <input type="checkbox" id="runAtStartupToggle" style="cursor: pointer;" />
+            </div>
+            <div class="scanner-row" style="margin-top: 0.25rem; margin-left: 1.5rem; font-size: 0.85rem;">
+              <label for="startMinimizedToggle" style="cursor: pointer; color: #a1a1aa;">Start Minimized</label>
+              <input type="checkbox" id="startMinimizedToggle" style="cursor: pointer;" />
+            </div>
             <div class="divider"></div>
             <button id="checkForUpdateBtn" class="record-btn">Check for Updates</button>
             <div id="updateStatus" style="font-size: 0.8rem; color: #a1a1aa; margin-top: 0.5rem; text-align: center;"></div>
             <button id="viewPatchNotesBtn" class="record-btn" style="margin-top: 0.5rem;">View Patch Notes (Latest)</button>
             <div id="patchNotesContent" style="display:none; background:#121214; padding:1rem; margin-top:0.5rem; border-radius:4px; font-size:0.8rem; color:#a1a1aa; max-height:200px; overflow-y:auto; border: 1px solid #27272a;">
-                <h4 style="color:#fff; margin-top:0; margin-bottom:0.5rem;">v1.8.0 - Pride & Customization Update</h4>
+                <h4 style="color:#fff; margin-top:0; margin-bottom:0.5rem;">v1.8.1 - Quality of Life & Fixes</h4>
                 <ul style="padding-left:1.2rem; margin:0; display:flex; flex-direction:column; gap:0.25rem;">
-                    <li><strong>Corner Flag:</strong> Added a customizable pride flag (toggleable, positionable).</li>
-                    <li><strong>Hydration Customization:</strong> Added custom themes and messages for the hydration popup.</li>
-                    <li><strong>4b4 Logic:</strong> "Start" button now defaults to "Running relic" in 4b4 mode.</li>
-                    <li><strong>UI Improvements:</strong> Settings menu organization and visual tweaks.</li>
+                    <li><strong>Start Minimized:</strong> Added option to start the app minimized to tray.</li>
+                    <li><strong>Fixes:</strong> Improved relic detection from logs and fixed button layout on small windows.</li>
+                    <li><strong>Features:</strong> Includes all Pride & Customization updates (Flags, Hydration themes).</li>
                 </ul>
             </div>
             <div class="divider"></div>
@@ -1769,6 +1777,8 @@
     const settingsModal = document.getElementById('settingsModal');
     const closeSettingsBtn = document.getElementById('closeSettingsBtn');
     const closeToTrayToggle = document.getElementById('closeToTrayToggle');
+    const runAtStartupToggle = document.getElementById('runAtStartupToggle');
+    const startMinimizedToggle = document.getElementById('startMinimizedToggle');
     const autoRelicToggle = document.getElementById('autoRelicToggle');
 
     settingsBtn.addEventListener('click', () => {
@@ -1787,13 +1797,23 @@
       if (window.electronAPI) window.electronAPI.setCloseToTray(closeToTrayToggle.checked);
     });
 
+    runAtStartupToggle.addEventListener('change', () => {
+      if (window.electronAPI) window.electronAPI.setRunAtStartup(runAtStartupToggle.checked);
+      startMinimizedToggle.disabled = !runAtStartupToggle.checked;
+      if (!runAtStartupToggle.checked) startMinimizedToggle.parentElement.style.opacity = '0.5';
+      else startMinimizedToggle.parentElement.style.opacity = '1';
+    });
+    startMinimizedToggle.addEventListener('change', () => {
+      if (window.electronAPI) window.electronAPI.setStartMinimized(startMinimizedToggle.checked);
+    });
+
     autoRelicToggle.addEventListener('change', () => {
       if (window.electronAPI) window.electronAPI.setAutoRelicEnabled(autoRelicToggle.checked);
     });
 
     if (window.electronAPI) {
       window.electronAPI.onDetectedRelic((event, relicName) => {
-        if (nowEl.textContent === RUNNING) {
+        if (nowEl.textContent === RUNNING || nowEl.textContent === '—') {
           relicNameInput.value = relicName;
           // Trigger the debounce save
           relicNameInput.dispatchEvent(new Event('input'));
@@ -2225,6 +2245,11 @@
           autoScanToggle.checked = settings.autoScanEnabled || false;
           autoRelicToggle.checked = settings.autoRelicEnabled || false;
           closeToTrayToggle.checked = settings.closeToTray || false;
+          runAtStartupToggle.checked = settings.runAtStartup || false;
+          startMinimizedToggle.checked = settings.startMinimized || false;
+          
+          startMinimizedToggle.disabled = !settings.runAtStartup;
+          startMinimizedToggle.parentElement.style.opacity = settings.runAtStartup ? '1' : '0.5';
 
           // Load Relic Name
           if (settings.relicName) {
@@ -2995,25 +3020,6 @@
       const layout = saveLayout(); // Saves to current active layout
       if (window.electronAPI) {
         // Also save to custom slot
-        window.electronAPI.setUISettings({ customLayout: layout });
-        alert("Layout saved as Custom Preset!");
-      }
-    });
-
-    loadCustomLayoutBtn.addEventListener('click', () => {
-      if (uiSettings && uiSettings.customLayout) {
-        applyLayout(uiSettings.customLayout);
-        saveLayout();
-      } else {
-        alert("No custom preset saved.");
-      }
-    });
-    // Load on startup (moved to end to ensure all variables are defined)
-    loadSettings();
-
-  </script>
-</body>
-</html>
         window.electronAPI.setUISettings({ customLayout: layout });
         alert("Layout saved as Custom Preset!");
       }

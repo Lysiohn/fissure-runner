@@ -125,6 +125,8 @@ if (typeof settings.hydrationTheme === 'undefined') settings.hydrationTheme = 'r
 if (typeof settings.hydrationMessage === 'undefined') settings.hydrationMessage = "HYDRATE OR DIE STRAIGHT!";
 if (typeof settings.flagTheme === 'undefined') settings.flagTheme = 'rainbow';
 if (typeof settings.flagEnabled === 'undefined') settings.flagEnabled = false;
+if (typeof settings.runAtStartup === 'undefined') settings.runAtStartup = false;
+if (typeof settings.startMinimized === 'undefined') settings.startMinimized = false;
 if (typeof settings.flagPosition === 'undefined') settings.flagPosition = 'left';
 
 function updateHydrationTimer() {
@@ -157,8 +159,17 @@ function registerGlobalHotkeys() {
   }
 }
 
+function updateLoginSettings() {
+  app.setLoginItemSettings({
+    openAtLogin: settings.runAtStartup,
+    args: settings.startMinimized ? ['--hidden'] : []
+  });
+}
+
 function createWindow() {
   const { width, height, x, y } = settings.windowBounds;
+  const startHidden = process.argv.includes('--hidden');
+
   win = new BrowserWindow({
     width: width || 750,
     height: height || 1050,
@@ -167,6 +178,7 @@ function createWindow() {
     icon: path.join(__dirname, "icon.ico"),
     alwaysOnTop: settings.alwaysOnTop,
     autoHideMenuBar: true,
+    show: !startHidden,
     webPreferences: {
       preload: path.join(__dirname, "preload.js")
     }
@@ -215,11 +227,16 @@ app.whenReady().then(() => {
   createWindow();
   registerGlobalHotkeys();
   updateHydrationTimer();
+  
+  // Sync startup setting
+  updateLoginSettings();
+
   if (settings.osdEnabled) {
     createOSDWindow();
   }
   
-  if (settings.closeToTray) createTray();
+  const startHidden = process.argv.includes('--hidden');
+  if (settings.closeToTray || startHidden) createTray();
 
   // Check for updates on start, but don't download automatically
   autoUpdater.autoDownload = false;
@@ -429,6 +446,18 @@ ipcMain.on('set-close-to-tray', (event, enabled) => {
     tray.destroy();
     tray = null;
   }
+});
+
+ipcMain.on('set-run-at-startup', (event, enabled) => {
+  settings.runAtStartup = enabled;
+  saveSettings();
+  updateLoginSettings();
+});
+
+ipcMain.on('set-start-minimized', (event, enabled) => {
+  settings.startMinimized = enabled;
+  saveSettings();
+  updateLoginSettings();
 });
 
 ipcMain.on('set-always-on-top', (event, enabled) => {
@@ -796,7 +825,7 @@ ipcMain.handle('test-log-reader', async () => {
 });
 
 // Pre-compile Regex to avoid recreation every tick
-const RELIC_DIALOG_REGEX = /Dialog::CreateOkCancel\(description=Are you sure you want to equip (.+?) Relic(?: \[(.+?)\])?/g;
+const RELIC_DIALOG_REGEX = /Dialog::CreateOkCancel\(description=Are you sure you want to equip (.+?) Relic(?: \[(.+?)\])?/gi;
 const LOGIN_REGEX = /Logged in .* \((.+?)\)/;
 
 function findLocalPlayerId() {
@@ -884,6 +913,7 @@ function checkLogUpdates() {
         // Example: Dialog::CreateOkCancel(description=Are you sure you want to equip Lith C5 Relic [FLAWLESS]...
         let match;
         let lastFound = null;
+        RELIC_DIALOG_REGEX.lastIndex = 0;
         while ((match = RELIC_DIALOG_REGEX.exec(content)) !== null) {
           lastFound = match;
         }

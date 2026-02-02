@@ -720,7 +720,11 @@ function createOSDWindow() {
 
 ipcMain.on('osd-drag', (event, { x, y }) => {
   if (osdWin && !osdWin.isDestroyed()) {
-    osdWin.setPosition(Math.round(x), Math.round(y));
+    const newX = Math.round(x);
+    const newY = Math.round(y);
+    osdWin.setPosition(newX, newY);
+    settings.osdPosition = { x: newX, y: newY };
+    saveSettings();
   }
 });
 
@@ -937,22 +941,23 @@ function checkLogUpdates() {
          return;
       }
 
+      // In Cascade mode, only look for the relic selection screen.
       if (settings.voidCascadeMode) {
         if (hasNewMatch('Script [Info]: ProjectionsCountdown.lua: Initialize timer')) {
           triggerDetection('Log (Relic Selection)', true);
-          return;
         }
-      } else {
-        if (hasNewMatch('Sys [Info]: Mission Success') || 
-            hasNewMatch('MissionSummary.swf') || 
-            hasNewMatch('LobbyMissionRewards') ||
-            hasNewMatch('OnMissionComplete') ||
-            hasNewMatch('EndOfMatch.lua: Mission Succeeded') ||
-            hasNewMatch('CGame::SetMissionState: STATE_COMPLETE') ||
-            hasNewMatch('Distributor::CompleteMission')) {
-          triggerDetection('Log (Mission Success)', true);
-          return;
-        }
+        // In cascade mode, we explicitly ignore all other success triggers, so we return here.
+        return;
+      }
+
+      // If NOT in cascade mode, check for normal mission success triggers.
+      if (hasNewMatch('Sys [Info]: Mission Success') || 
+          hasNewMatch('MissionSummary.swf') || 
+          hasNewMatch('LobbyMissionRewards') ||
+          hasNewMatch('OnMissionComplete') ||
+          hasNewMatch('EndOfMatch.lua: Mission Succeeded')) {
+        triggerDetection('Log (Mission Success)', true);
+        return;
       }
     } else if (currentSize < lastLogSize) {
       // File truncated (game restart), reset pointer

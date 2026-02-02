@@ -1,6 +1,7 @@
 # Linux Build Instructions
 
 If you want to build the AppImage yourself (e.g., for Arch Linux, Ubuntu, or Steam Deck), follow these steps.
+## However, the OSD is not yet made to be used for Linux, you have to make changes to the OSD yourself to make it work.
 
 ## 1. Prerequisites
 

@@ -1,7 +1,7 @@
 # Linux Build Instructions
 
-If you want to build the AppImage yourself (e.g., for Arch Linux, Ubuntu, or Steam Deck), follow these steps.
-## However, the OSD is not yet made to be used for Linux, you have to make changes to the OSD yourself to make it work, the log scanner itself etc. should work without problems.
+If you want to build the AppImage yourself (e.g., for Arch Linux, Ubuntu etc.), follow these steps.
+## However, the OSD is not yet made to be used for Linux, you have to make changes to the OSD yourself to make it work, the log scanner itself etc. should work without problems. (As Workaround in KDE Plasma set Special Window Settings for OSD to Always on Top and Force Focus off + disable show in Taskbar and AltTab Menu)
 
 ## 1. Prerequisites
 
